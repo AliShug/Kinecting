@@ -1,0 +1,8 @@
+*.ipch
+*.tlog
+Debug/
+Release/
+.vs/
+.bmp
+*.opensdf
+*.sdf
