@@ -164,6 +164,7 @@
     <ClInclude Include="GLDepthWindow.h" />
     <ClInclude Include="GLDisplayWindow.h" />
     <ClInclude Include="GLNormalWindow.h" />
+    <ClInclude Include="GLObject.h" />
     <ClInclude Include="GLWindow.h" />
     <ClInclude Include="KinectDevice.h" />
     <ClInclude Include="PointCloud.h" />
@@ -179,6 +180,7 @@
     <ClCompile Include="GLDepthWindow.cpp" />
     <ClCompile Include="GLDisplayWindow.cpp" />
     <ClCompile Include="GLNormalWindow.cpp" />
+    <ClCompile Include="GLObject.cpp" />
     <ClCompile Include="GLWindow.cpp" />
     <ClCompile Include="KinectDevice.cpp" />
     <ClCompile Include="Kinecting.cpp" />
