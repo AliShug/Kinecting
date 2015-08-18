@@ -21,6 +21,11 @@ public:
             , norm(0)
             , col(1)
             , uv(0) {}
+		vertex(point_t p, normal_t n, color_t c, uv_t u)
+			: pos(p)
+			, norm(n)
+			, col(c)
+			, uv(u) {}
     };
 
     struct mesh {

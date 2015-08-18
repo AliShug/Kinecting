@@ -35,40 +35,40 @@ void GLObject::genCuboid(float length, float width, float height) {
 
     _mesh.vertices = decltype(_mesh.vertices) {
         // Bottom
-        { p0, down, {1, 1}, col },
-        { p1, down, {0, 1}, col },
-        { p2, down, {0, 0}, col },
-        { p3, down, {1, 0}, col },
+        { p0, down, col, {1, 1} },
+        { p1, down, col, {0, 1} },
+        { p2, down, col, {0, 0} },
+        { p3, down, col, {1, 0} },
 
         // Left
-        { p7, left, {1, 1}, col },
-        { p4, left, {0, 1}, col },
-        { p0, left, {0, 0}, col },
-        { p3, left, {1, 0}, col },
+        { p7, left, col, {1, 1} },
+        { p4, left, col, {0, 1} },
+        { p0, left, col, {0, 0} },
+        { p3, left, col, {1, 0} },
 
         // Front
-        { p4, front, {1, 1}, col },
-        { p5, front, {0, 1}, col },
-        { p1, front, {0, 0}, col },
-        { p0, front, {1, 0}, col },
+        { p4, front, col, {1, 1} },
+        { p5, front, col, {0, 1} },
+        { p1, front, col, {0, 0} },
+        { p0, front, col, {1, 0} },
 
         // Back
-        { p6, back, {1, 1}, col },
-        { p7, back, {0, 1}, col },
-        { p3, back, {0, 0}, col },
-        { p2, back, {1, 0}, col },
+        { p6, back, col, {1, 1} },
+        { p7, back, col, {0, 1} },
+        { p3, back, col, {0, 0} },
+        { p2, back, col, {1, 0} },
 
         // Right
-        { p5, right, {1, 1}, col },
-        { p6, right, {0, 1}, col },
-        { p2, right, {0, 0}, col },
-        { p1, right, {1, 0}, col },
+        { p5, right, col, {1, 1} },
+        { p6, right, col, {0, 1} },
+        { p2, right, col, {0, 0} },
+        { p1, right, col, {1, 0} },
 
         // Top
-        { p7, up, {1, 1}, col },
-        { p6, up, {0, 1}, col },
-        { p5, up, {0, 0}, col },
-        { p4, up, {1, 0}, col }
+        { p7, up, col, {1, 1} },
+        { p6, up, col, {0, 1} },
+        { p5, up, col, {0, 0} },
+        { p4, up, col, {1, 0} }
     };
 
     _mesh.indices = decltype(_mesh.indices) {

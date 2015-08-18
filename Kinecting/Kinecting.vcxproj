@@ -72,19 +72,23 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <LibraryPath>$(FREEIMAGE32);$(GLEW_LIB);$(SDL2_LIB)\Release;$(KINECTSDK20_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(FREEIMAGE32);$(GLEW_LIB);$(SDL2MAIN_LIB)\Release;$(SDL2_LIB)\Release;$(KINECTSDK20_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
     <IncludePath>$(FREEIMAGE32);$(GLEW_INCLUDE);$(GLM_DIR);$(SDL2_INCLUDE);$(KINECTSDK20_DIR)inc;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(KINECTSDK20_DIR)inc;$(GLM_DIR);$(GLEW_INCLUDE);$(FREEIMAGE32);$(SDL2_INCLUDE);$(IncludePath)</IncludePath>
+    <LibraryPath>$(GLEW_LIB);$(FREEIMAGE32);$(KINECTSDK20_DIR)lib\x86;$(SDL2_LIB)\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(OPENCV3_INCLUDE);$(FREEIMAGE32);$(GLEW_INCLUDE);$(GLM_DIR);$(SDL2_INCLUDE);$(KINECTSDK20_DIR)inc;$(IncludePath)</IncludePath>
-    <LibraryPath>$(OPENCV3_LIB)\Release;$(FREEIMAGE32);$(GLEW_LIB);$(SDL2_LIB)\Release;$(KINECTSDK20_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(OPENCV3_LIB)\Release;$(FREEIMAGE32);$(GLEW_LIB);$(SDL2MAIN_LIB)\Release;$(SDL2_LIB)\Release;$(KINECTSDK20_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(KINECTSDK20_DIR)inc;$(GLM_DIR);$(GLEW_INCLUDE);$(FREEIMAGE32);$(SDL2_INCLUDE);$(IncludePath)</IncludePath>
+    <LibraryPath>$(GLEW_LIB);$(FREEIMAGE32);$(KINECTSDK20_DIR)lib\x86;$(SDL2_LIB)\Release</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -136,7 +140,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>FreeImage.lib;glew32.lib;SDL2.lib;SDL2main.lib;OpenGL32.lib;kinect20.lib;opencv_core300.lib;opencv_highgui300.lib;opencv_features2d300.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>FreeImage.lib;glew32.lib;SDL2.lib;SDL2main.lib;OpenGL32.lib;kinect20.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
