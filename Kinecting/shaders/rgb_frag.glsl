@@ -22,6 +22,5 @@ void main() {
     pos.y /= camYDim;
 
     float dist = distance(pos, vec2(0.5f, 0.5f));
-    if (dist > 0.01f && dist < 0.013f)
-        LFragment = vec3(1);
+    if (dist > 0.01f && dist < 0.013f) LFragment = vec3(1);
 }

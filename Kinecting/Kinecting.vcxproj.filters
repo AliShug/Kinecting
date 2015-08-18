@@ -48,13 +48,7 @@
     <ClInclude Include="ShaderManager.h">
       <Filter>Header Files\GL</Filter>
     </ClInclude>
-    <ClInclude Include="Texture.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GLDepthWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NormDepthImage.h">
@@ -63,8 +57,14 @@
     <ClInclude Include="PointCloud.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GLDepthWindow.h">
+      <Filter>Header Files\GL</Filter>
+    </ClInclude>
     <ClInclude Include="GLObject.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\GL</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Header Files\GL</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -92,12 +92,6 @@
     <ClCompile Include="ShaderManager.cpp">
       <Filter>Source Files\GL</Filter>
     </ClCompile>
-    <ClCompile Include="Texture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GLDepthWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -107,8 +101,14 @@
     <ClCompile Include="PointCloud.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GLDepthWindow.cpp">
+      <Filter>Source Files\GL</Filter>
+    </ClCompile>
     <ClCompile Include="GLObject.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>Source Files\GL</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

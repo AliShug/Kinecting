@@ -32,7 +32,6 @@ auto getTestPng(std::string file) {
 int main(int argc, char *args[]) {
     KinectDevice kinect;
     GLDisplayWindow dispWindow;
-    GLDepthWindow depthWindow;
 
     // Data for testing (load from png)
     //auto testData = getTestPng("normalTestImg");
@@ -46,7 +45,6 @@ int main(int argc, char *args[]) {
         int frame_h = kinect.depthFrameInfo.h;
 
         dispWindow.showWindow("Filled", frame_w, frame_h);
-        depthWindow.showWindow("Depth values", frame_w/2, frame_h/2);
 
         Dim fullSize = { frame_w, frame_h };
         Dim halfSize = { frame_w / 2, frame_h / 2 };
@@ -71,7 +69,6 @@ int main(int argc, char *args[]) {
             while (SDL_PollEvent(&e) != 0) {
                 // Handle all waiting events
                 dispWindow.handleEvent(e);
-                depthWindow.handleEvent(e);
 
                 if (e.type == SDL_QUIT || (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE)) {
                     quit = true;
@@ -96,10 +93,6 @@ int main(int argc, char *args[]) {
 
             // Pass to image processor and gui
             img.setDepth(floatData.get());
-            depthWindow.setInputImage(floatData.get(), &fullSize);
-
-            // Render the raw depth
-            depthWindow.render();
             
             // **************************************************
             // *** Image Processing
