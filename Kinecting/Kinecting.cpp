@@ -10,6 +10,7 @@
 
 #include "NormDepthImage.h"
 #include "PointCloud.h"
+#include "GLObject.h"
 
 auto getTestPng(std::string file) {
     // Load a test image
@@ -55,6 +56,10 @@ int main(int argc, char *args[]) {
 
         // Image processing platform
         NormDepthImage img(fullSize);
+
+		// Display object
+		auto obj = dispWindow.createObject();
+		obj->genCuboid();
 
         // Run the main loop
         SDL_Event e;
@@ -120,8 +125,8 @@ int main(int argc, char *args[]) {
             // Now we can generate a point-cloud and get the mean position
             PointCloud pc(img, camXZ, camYZ);
             auto pos = pc.meanPosition();
-            std::cout << pos.z << std::endl;
-
+            //std::cout << pos.z << std::endl;
+			obj->setPosition(pos);
 
             // Pull out a formatted uint32 image
             auto pixels = img.getFormattedImg();
@@ -134,6 +139,9 @@ int main(int argc, char *args[]) {
     catch (std::exception e) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime Error", e.what(), nullptr);
     }
+	catch (char* e) {
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e, nullptr);
+	}
 
     // Explicit cleanup (mainly for SDL subsystems)
     GLWindow::ReleaseGUI();

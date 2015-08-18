@@ -176,6 +176,11 @@ void GLWindow::render() {
     // Unbind
     glUseProgram(NULL);
 
+	// Render objects
+	for (auto obj : _objects) {
+		obj->render();
+	}
+
     // Swap buffers
     SDL_GL_SwapWindow(_window);
 }

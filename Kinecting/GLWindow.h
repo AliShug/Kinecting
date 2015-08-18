@@ -4,6 +4,7 @@
 #include "ShaderManager.h"
 #include "Texture.h"
 #include "Util.h"
+#include "GLObject.h"
 
 class GLWindow {
 public:
@@ -54,9 +55,21 @@ public:
     void capture(const std::string &file);
     void getFrame(uint32_t **buff, int *size);
 
+	// Creates, stores, binds and returns a new gl-object
+	auto createObject() {
+		auto obj = std::make_shared<GLObject>();
+		obj->bind();
+		_objects.push_back(obj);
+		return obj;
+	}
+
     ShaderManager shaders;
 
 protected:
+	// TEMP (probably)
+	std::vector<std::shared_ptr<GLObject>> _objects;
+	// /TEMP
+
     // Various init & utility functions
     virtual void initRenderer();
     bool checkGl(const char* location);

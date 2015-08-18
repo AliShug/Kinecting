@@ -19,6 +19,11 @@ public:
             if (!valid()) throw std::exception("Attempted to bind invalid shader param");
             glUniform1f(ref, in);
         }
+
+		inline void bindMat4(glm::mat4 &m) {
+			if (!valid()) throw "Attempted to bind invalid shader param";
+			glUniformMatrix4fv(ref, 1, GL_FALSE, glm::value_ptr(m));
+		}
     };
 
     struct ParamMap {
@@ -33,6 +38,7 @@ public:
     ShaderManager() {}
     ~ShaderManager() {}
 
+	// Loads, compiles and parses the chosen shaders
     void compileShaders();
     void use() { glUseProgram(programID); }
 

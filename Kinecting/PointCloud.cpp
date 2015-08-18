@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "PointCloud.h"
 
 PointCloud::PointCloud(NormDepthImage &source, float camXZ, float camYZ) {

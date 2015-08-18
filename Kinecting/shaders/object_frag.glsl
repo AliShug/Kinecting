@@ -1,7 +1,10 @@
 #version 330
 
-out vec3 col;
+in vec2 texCoord;
+in vec3 color;
+
+out vec3 fragCol;
 
 void main() {
-    col = vec3(0);
+    fragCol = color;
 }

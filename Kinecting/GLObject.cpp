@@ -102,12 +102,12 @@ void GLObject::bind() {
     // Switch to our shaders
     _shaders.use();
 
-    if (!_shaders.namedParam("vertex").valid()) {
+    if (!_shaders.namedParam("pos").valid()) {
         throw "Vertex attribute missing from object shader!";
     }
 
     // Grab the vertex input reference (reference to the input structure)
-    GLint vertexRef = _shaders.namedParam("vertex").ref;
+    GLint vertexRef = _shaders.namedParam("pos").ref;
 
     // Create & bind VAO (this encapsulates the other states)
     glGenVertexArrays(1, &_mesh.vao);
@@ -127,12 +127,19 @@ void GLObject::bind() {
     glEnableVertexAttribArray(vertexRef);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, pos)));
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, norm)));
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, col)));
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, col)));
 }
 
 void GLObject::render() {
-    // Switch to our shaders
+    // Switch to our shaders & mesh VAO
     _shaders.use();
+	glBindVertexArray(_mesh.vao);
 
     // TODO .. render
+
+	// Pump in the transformation matrix
+	_shaders.namedParam("MatMVP").bindMat4(projectionMat * viewMat * _transform);
+
+	// Render the object
+	glDrawElements(GL_TRIANGLES, _mesh.indices.size(), GL_UNSIGNED_INT, 0);
 }
