@@ -40,7 +40,14 @@ public:
 
 	// Loads, compiles and parses the chosen shaders
     void compileShaders();
-    void use() { glUseProgram(programID); }
+
+    void use() {
+		glUseProgram(programID);
+		GLenum err = glGetError();
+		if (err != GL_NO_ERROR) {
+			throw "Use program error " + std::to_string(err);
+		}
+	}
 
     void free() {
         if (programID != -1) glDeleteProgram(programID);
@@ -59,8 +66,6 @@ public:
 
 protected:
     std::string _vShaderContents, _fShaderContents;
-    GLint _vertexPos2DLoc, _depthImgLoc, _colImgLoc;
-    GLint _xDimLoc, _yDimLoc;
     int textureInd = 0;
 
     void parseShaders();

@@ -6,6 +6,7 @@
 void ShaderManager::compileShaders() {
     // Create the GL program
     programID = glCreateProgram();
+	std::cout << "New program " << programID << std::endl;
 
     // Vertex shader
     GLuint vShade = shaderFromFile(vertexShader, GL_VERTEX_SHADER);

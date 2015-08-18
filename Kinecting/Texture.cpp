@@ -61,10 +61,14 @@ void Texture::bind(GLuint prog, GLint ref, int index) {
 
 void Texture::setImage(const void * data) {
     activate();
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, _glFormat, _glDataType, data);
 
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, _glFormat, _glDataType, data);
     GLenum err = glGetError();
-    if (err != GL_NO_ERROR) throw std::exception("Bad texture write");
+
+	if (err != GL_NO_ERROR) {
+		std::cerr << "Bad texture write to " << glTex << ", " << width << "x" << height << std::endl;
+		throw "Bad texture write to " + std::to_string(glTex) + ", error " + std::to_string(err);
+	}
 }
 
 void Texture::activate() {

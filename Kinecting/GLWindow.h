@@ -57,7 +57,9 @@ public:
 
 	// Creates, stores, binds and returns a new gl-object
 	auto createObject() {
+		SDL_GL_MakeCurrent(_window, _context);
 		auto obj = std::make_shared<GLObject>();
+		obj->genCuboid(1, 1, 1);
 		obj->bind();
 		_objects.push_back(obj);
 		return obj;

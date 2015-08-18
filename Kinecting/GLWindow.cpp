@@ -21,6 +21,7 @@ void GLWindow::initRenderer() {
     // GL settings
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glDisable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
 
     // Depth mesh
     _mesh.init(shaders.namedParam("LVertexPos3D").ref);
@@ -96,9 +97,9 @@ void GLWindow::showWindow(std::string name, int w, int h) {
     glGetError();
 
     // VSync
-    if (SDL_GL_SetSwapInterval(1) < 0) {
-        std::cout << "Warning - Could not enable vsync: " << SDL_GetError() << std::endl;
-    }
+	if (SDL_GL_SetSwapInterval(1) < 0) {
+		std::cout << "Warning - Could not enable vsync: " << SDL_GetError() << std::endl;
+	}
 
     // OpenGL
     initRenderer();
@@ -159,6 +160,7 @@ void GLWindow::getFrame(uint32_t ** buff, int * size) {
 }
 
 void GLWindow::closeWindow() {
+	SDL_GL_MakeCurrent(_window, _context);
     shaders.free();
 
     SDL_GL_DeleteContext(_context);
@@ -168,15 +170,16 @@ void GLWindow::closeWindow() {
 
 void GLWindow::render() {
     SDL_GL_MakeCurrent(_window, _context);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Render our quad
+    // Render image quad
     shaders.use();
     _mesh.render();
 
-    // Unbind
-    glUseProgram(NULL);
+	// Re-clear (?)
+	glClear(GL_DEPTH_BUFFER_BIT);
 
-	// Render objects
+	// Render virtual objects
 	for (auto obj : _objects) {
 		obj->render();
 	}
@@ -187,6 +190,7 @@ void GLWindow::render() {
 
 void GLWindow::setInputImage(const void* data, const Dim *size) {
     SDL_GL_MakeCurrent(_window, _context);
+	shaders.use();
 
     if (size && (_inputTex.width != size->width || _inputTex.height != size->height)) {
         // Re-initialize texture with new input size
@@ -195,6 +199,5 @@ void GLWindow::setInputImage(const void* data, const Dim *size) {
         shaders.bindTexture(_inputTex, "UInputImg");
     }
 
-    shaders.use();
     _inputTex.setImage(data);
 }

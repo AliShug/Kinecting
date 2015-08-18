@@ -16,11 +16,14 @@ public:
         color_t col;
         uv_t uv;
 
-        vertex()
-            : pos(0)
+		vertex()
+			: pos(0)
             , norm(0)
             , col(1)
             , uv(0) {}
+
+		vertex(point_t pt)
+			: pos(pt) {}
 
 		vertex(point_t p, normal_t n, color_t c, uv_t u)
 			: pos(p)

@@ -51,6 +51,10 @@ int main(int argc, char *args[]) {
         Dim fullSize = { frame_w, frame_h };
         Dim halfSize = { frame_w / 2, frame_h / 2 };
 
+		// Storage for raw camera output
+		auto rawData = std::unique_ptr<uint16_t>(new uint16_t[frame_w*frame_h]);
+		auto floatData = std::unique_ptr<float>(new float[frame_w*frame_h]);
+
         // Begin reading in frames
         kinect.asyncListen();
 
@@ -59,7 +63,6 @@ int main(int argc, char *args[]) {
 
 		// Display object
 		auto obj = dispWindow.createObject();
-		obj->genCuboid();
 
         // Run the main loop
         SDL_Event e;
@@ -75,30 +78,25 @@ int main(int argc, char *args[]) {
                 }
             }
 
-            // Block for temp memory cleanup
+
             {
-                auto rawData = std::unique_ptr<uint16_t>(new uint16_t[frame_w*frame_h]);
-                auto floatData = std::unique_ptr<float>(new float[frame_w*frame_h]);
-
-                {
-                    // Exception-proof lock for depth read
-                    std::lock_guard<decltype(kinect.frameLock)> lck(kinect.frameLock);
-                    memcpy(rawData.get(), kinect.depthData.get(), fullSize.area()*sizeof(uint16_t));
-                }
-                
-                // Convert depth to float-32
-                const int count = frame_w * frame_h;
-                auto fd = floatData.get();
-                auto rd = rawData.get();
-
-                for (int i = 0; i < count; i++) {
-                    fd[i] = (float) rd[i];
-                }
-
-                // Pass to image processor and gui
-                img.setDepth(floatData.get());
-                depthWindow.setInputImage(floatData.get(), &fullSize);
+                // Exception-proof lock for depth read
+                std::lock_guard<decltype(kinect.frameLock)> lck(kinect.frameLock);
+                memcpy(rawData.get(), kinect.depthData.get(), fullSize.area()*sizeof(uint16_t));
             }
+                
+            // Convert depth to float-32
+            const int count = frame_w * frame_h;
+            auto fd = floatData.get();
+            auto rd = rawData.get();
+
+            for (int i = 0; i < count; i++) {
+                fd[i] = (float) rd[i];
+            }
+
+            // Pass to image processor and gui
+            img.setDepth(floatData.get());
+            depthWindow.setInputImage(floatData.get(), &fullSize);
 
             // Render the raw depth
             depthWindow.render();
@@ -119,14 +117,15 @@ int main(int argc, char *args[]) {
             //img.threshold_meanNormalBlur(4, 0.28f);
 
             // Flood-fill
-            img.threshold_normalFlood({ frame_w / 2, frame_h / 2 }, 0.1f, 0.01f);
+            //img.threshold_normalFlood({ frame_w / 2, frame_h / 2 }, 0.1f, 0.01f);
 
 
             // Now we can generate a point-cloud and get the mean position
             PointCloud pc(img, camXZ, camYZ);
             auto pos = pc.meanPosition();
             //std::cout << pos.z << std::endl;
-			obj->setPosition(pos);
+			//obj->setPosition(pos);
+			obj->setPosition({ 0.0f, 0.0f, 0.0f });
 
             // Pull out a formatted uint32 image
             auto pixels = img.getFormattedImg();
@@ -137,10 +136,13 @@ int main(int argc, char *args[]) {
         }
     }
     catch (std::exception e) {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime Error", e.what(), nullptr);
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.what(), nullptr);
     }
 	catch (char* e) {
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e, nullptr);
+	}
+	catch (std::string e) {
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.c_str(), nullptr);
 	}
 
     // Explicit cleanup (mainly for SDL subsystems)
