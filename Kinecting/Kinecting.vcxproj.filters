@@ -33,15 +33,6 @@
     <ClInclude Include="KinectDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DepthMesh.h">
-      <Filter>Header Files\GL</Filter>
-    </ClInclude>
-    <ClInclude Include="GLDisplayWindow.h">
-      <Filter>Header Files\GL</Filter>
-    </ClInclude>
-    <ClInclude Include="GLNormalWindow.h">
-      <Filter>Header Files\GL</Filter>
-    </ClInclude>
     <ClInclude Include="GLWindow.h">
       <Filter>Header Files\GL</Filter>
     </ClInclude>
@@ -57,13 +48,13 @@
     <ClInclude Include="PointCloud.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GLDepthWindow.h">
-      <Filter>Header Files\GL</Filter>
-    </ClInclude>
     <ClInclude Include="GLObject.h">
       <Filter>Header Files\GL</Filter>
     </ClInclude>
     <ClInclude Include="Texture.h">
+      <Filter>Header Files\GL</Filter>
+    </ClInclude>
+    <ClInclude Include="GLScene.h">
       <Filter>Header Files\GL</Filter>
     </ClInclude>
   </ItemGroup>
@@ -76,15 +67,6 @@
     </ClCompile>
     <ClCompile Include="KinectDevice.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DepthMesh.cpp">
-      <Filter>Source Files\GL</Filter>
-    </ClCompile>
-    <ClCompile Include="GLDisplayWindow.cpp">
-      <Filter>Source Files\GL</Filter>
-    </ClCompile>
-    <ClCompile Include="GLNormalWindow.cpp">
-      <Filter>Source Files\GL</Filter>
     </ClCompile>
     <ClCompile Include="GLWindow.cpp">
       <Filter>Source Files\GL</Filter>
@@ -101,13 +83,13 @@
     <ClCompile Include="PointCloud.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GLDepthWindow.cpp">
-      <Filter>Source Files\GL</Filter>
-    </ClCompile>
     <ClCompile Include="GLObject.cpp">
       <Filter>Source Files\GL</Filter>
     </ClCompile>
     <ClCompile Include="Texture.cpp">
+      <Filter>Source Files\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="GLScene.cpp">
       <Filter>Source Files\GL</Filter>
     </ClCompile>
   </ItemGroup>

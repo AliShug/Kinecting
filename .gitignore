@@ -6,3 +6,5 @@ Release/
 .bmp
 *.opensdf
 *.sdf
+*.vspx
+*.psess

@@ -1,18 +1,41 @@
 #include "stdafx.h"
 #include "GLObject.h"
+#include "GLScene.h"
 
+GLObject::GLObject(const GLScene *parent, const std::string &fragShader, const std::string &vertShader)
+	: _scene(parent) {
 
-GLObject::GLObject() {
     // Just compile the shader program
-    _shaders.fragmentShader = "object_frag.glsl";
-    _shaders.vertexShader = "object_vert.glsl";
+    shaders.fragmentShader = fragShader.c_str();
+    shaders.vertexShader = vertShader.c_str();
 
-    _shaders.compileShaders();
+    shaders.compileShaders();
+}
 
-	// 'camera'
-	using namespace glm;
-	viewMat = lookAt(vec3(0, 1, 2), vec3(0, 0, 0), vec3(0, 1, 0));
-	projectionMat = perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
+void GLObject::genQuad() {
+	// Points
+	point_t p0(-1.0f, -1.0f, 0.0f);
+	point_t p1( 1.0f, -1.0f, 0.0f);
+	point_t p2(-1.0f,  1.0f, 0.0f);
+	point_t p3( 1.0f,  1.0f, 0.0f);
+
+	// Normals
+	normal_t front(0.0f, 0.0f, 1.0f);
+
+	// Color (white)
+	color_t col(1);
+
+	_mesh.vertices = decltype(_mesh.vertices) {
+		// Front
+		{ p0, front, col,{ 0, 1 } },
+		{ p1, front, col,{ 1, 1 } },
+		{ p2, front, col,{ 0, 0 } },
+		{ p3, front, col,{ 1, 0 } },
+	};
+
+	_mesh.indices = decltype(_mesh.indices) {
+		0, 2, 3, 0, 3, 1
+	};
 }
 
 void GLObject::genCuboid(float length, float width, float height) {
@@ -105,25 +128,25 @@ void GLObject::genCuboid(float length, float width, float height) {
 
 void GLObject::bind() {
     // Switch to our shaders
-    _shaders.use();
+    shaders.use();
 
-    if (!_shaders.namedParam("pos").valid()) {
+    if (!shaders.namedParam("pos").valid()) {
         throw "Vertex position attribute missing from object shader!";
     }
 
-	if (!_shaders.namedParam("norm").valid()) {
+	/*if (!shaders.namedParam("norm").valid()) {
 		throw "Vertex normal attribute missing from object shader!";
 	}
 
-	if (!_shaders.namedParam("col").valid()) {
+	if (!shaders.namedParam("col").valid()) {
 		throw "Vertex color attribute missing from object shader!";
-	}
+	}*/
 
     // Grab the vertex input reference (reference to the input structure)
-	GLint vertexRef, normalRef, colorRef;
-	vertexRef = _shaders.namedParam("pos").ref;
-	normalRef = _shaders.namedParam("norm").ref;
-	colorRef = _shaders.namedParam("col").ref;
+	auto vertexRef = shaders.namedParam("pos");
+	auto normalRef = shaders.namedParam("norm");
+	auto colorRef = shaders.namedParam("col");
+	auto uvRef = shaders.namedParam("uv");
 
     // Create & bind VAO (this encapsulates the other states)
     glGenVertexArrays(1, &_mesh.vao);
@@ -140,25 +163,51 @@ void GLObject::bind() {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, _mesh.indices.size() * sizeof(GLuint), _mesh.indices.data(), GL_STATIC_DRAW);
 
     // Vertex attributes - defines the input structure
-    glEnableVertexAttribArray(vertexRef);
-    glVertexAttribPointer(vertexRef, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, pos)));
-	glEnableVertexAttribArray(normalRef);
-    glVertexAttribPointer(normalRef, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, norm)));
-	glEnableVertexAttribArray(colorRef);
-	glVertexAttribPointer(colorRef, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, col)));
+    glEnableVertexAttribArray(vertexRef.ref);
+    glVertexAttribPointer(vertexRef.ref, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, pos)));
+	
+	if (normalRef.valid()) {
+		glEnableVertexAttribArray(normalRef.ref);
+		glVertexAttribPointer(normalRef.ref, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, norm)));
+	}
+
+	if (colorRef.valid()) {
+		glEnableVertexAttribArray(colorRef.ref);
+		glVertexAttribPointer(colorRef.ref, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, col)));
+	}
+
+	if (uvRef.valid()) {
+		glEnableVertexAttribArray(uvRef.ref);
+		glVertexAttribPointer(uvRef.ref, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, uv)));
+	}
 }
 
-void GLObject::render() {
+void GLObject::render(const glm::mat4 &vpMat) {
     // Switch to our shaders & mesh VAO
-    _shaders.use();
+    shaders.use();
 	glBindVertexArray(_mesh.vao);
+
+	// General shader uniforms
+	auto p1 = shaders.namedParam("camXDim");
+	auto p2 = shaders.namedParam("camYDim");
+	if (p1.valid()) p1.bindFloat(_scene->camera.dim.width);
+	if (p2.valid()) p2.bindFloat(_scene->camera.dim.height);
+
+	auto xz = shaders.namedParam("camXZFactor");
+	auto yz = shaders.namedParam("camYZFactor");
+	if (xz.valid()) xz.bindFloat(tanf((_scene->camera.fov.x * M_PI / 180.0f) / 2.0f));
+	if (yz.valid()) yz.bindFloat(tanf((_scene->camera.fov.y * M_PI / 180.0f) / 2.0f));
 
 	// Pump in the transformation matrix
 	static float rot = 0;
 	rot += 0.2f;
 	_transform = glm::rotate(_transform, rot, glm::vec3(0, 1, 1));
-	glm::mat4 mvp = projectionMat * viewMat * _transform;
-	_shaders.namedParam("MatMVP").bindMat4(mvp);
+	glm::mat4 mvp = vpMat * _transform;
+
+	auto mvpRef = shaders.namedParam("MatMVP");
+	if (mvpRef.valid()) {
+		mvpRef.bindMat4(mvp);
+	}
 
 	// Render the object
 	glDrawElements(GL_TRIANGLES, _mesh.indices.size(), GL_UNSIGNED_INT, NULL);

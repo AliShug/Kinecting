@@ -36,7 +36,9 @@ public:
     };
 
     ShaderManager() {}
-    ~ShaderManager() {}
+    ~ShaderManager() {
+		free();
+	}
 
 	// Loads, compiles and parses the chosen shaders
     void compileShaders();
@@ -60,8 +62,8 @@ public:
     std::vector<ParamMap> parameters;
 
     GLuint programID = -1;
-    char *vertexShader = "";
-    char *fragmentShader = "";
+    const char *vertexShader = "";
+    const char *fragmentShader = "";
 
 
 protected:

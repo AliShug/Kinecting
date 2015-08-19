@@ -9,9 +9,9 @@ Texture::Texture() {}
 Texture::~Texture() {}
 
 
-void Texture::init(Format fmt, int w, int h) {
-    width = w;
-    height = h;
+void Texture::init(Format fmt, Dim &size) {
+    width = size.width;
+    height = size.height;
     
     switch (fmt) {
     case Format::DEPTH:
@@ -41,7 +41,12 @@ void Texture::init(Format fmt, int w, int h) {
     glBindTexture(GL_TEXTURE_2D, glTex);
 
     // Allocate memory
-    glTexImage2D(GL_TEXTURE_2D, 0, _glInternalFormat, w, h, 0, _glFormat, _glDataType, nullptr);
+    glTexImage2D(
+		GL_TEXTURE_2D, 0,
+		_glInternalFormat,
+		size.width, size.height, 0,
+		_glFormat, _glDataType,
+		nullptr);
 }
 
 void Texture::bind(GLuint prog, GLint ref, int index) {

@@ -2,6 +2,8 @@
 #include "stdafx.h"
 #include "ShaderManager.h"
 
+class GLScene;
+
 class GLObject {
 public:
     // Internal types
@@ -39,22 +41,18 @@ public:
         GLuint vbo, ibo, vao;
     };
 
-    GLObject();
+	GLObject(const GLScene *parent, const std::string &fragShader, const std::string &vertShader);
     ~GLObject() {}
 
-	// TEMP!
-	// camera/view stuff
-	glm::mat4 projectionMat, viewMat;
-	// /TEMP
-
     // Object generation functions
+	void genQuad();
     void genCuboid(float length = 1, float width = 1, float height = 1);
 
     // Binds the object using the current context
     void bind();
 
     // Renders the object using the current context
-    void render();
+    void render(const glm::mat4 &vpMat);
 
 	// Get the object's transformation
 	glm::mat4 getTransform() { return _transform; }
@@ -63,12 +61,13 @@ public:
 		_transform = glm::translate(glm::mat4(), pos);
 	}
 
+    // Shader manager
+    ShaderManager shaders;
+
 protected:
     // Member data
     mesh _mesh;
 	glm::mat4 _transform; // <- probably want to separate this out..
-
-    // Shader manager
-    ShaderManager _shaders;
+	const GLScene *_scene;
 };
 

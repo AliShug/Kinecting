@@ -1,10 +1,10 @@
 #pragma once
 #include "stdafx.h"
-#include "DepthMesh.h"
 #include "ShaderManager.h"
 #include "Texture.h"
 #include "Util.h"
 #include "GLObject.h"
+#include "GLScene.h"
 
 class GLWindow {
 public:
@@ -44,52 +44,40 @@ public:
     }
 
     // Local init
-    void showWindow(std::string name, int w, int h);
+    void showWindow(std::string name, Dim &size);
 
     virtual void update() {}
-    virtual void render();
+
+	// Render the 3D view
+	virtual void render() {
+		activate();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		scene.render();
+		SDL_GL_SwapWindow(_window);
+	}
+
     virtual void handleEvent(const SDL_Event &e);
-    virtual void setInputImage(const void * data, const Dim *size = nullptr);
 
     void closeWindow();
     void capture(const std::string &file);
     void getFrame(uint32_t **buff, int *size);
 
-	// Creates, stores, binds and returns a new gl-object
-	auto createObject() {
+	// Activates the window's rendering context
+	void activate() {
 		SDL_GL_MakeCurrent(_window, _context);
-		auto obj = std::make_shared<GLObject>();
-		obj->genCuboid(1, 1, 1);
-		obj->bind();
-		_objects.push_back(obj);
-		return obj;
 	}
 
-    ShaderManager shaders;
+	GLScene scene;
 
 protected:
-	// TEMP (probably)
-	std::vector<std::shared_ptr<GLObject>> _objects;
-	// /TEMP
-
-    // Various init & utility functions
-    virtual void initRenderer();
+    // Error check util
     bool checkGl(const char* location);
 
-    // Variables
+    // Members
     SDL_Window *_window = nullptr;
     SDL_GLContext _context = nullptr;
 
     bool _fullscreen;
-
-    DepthMesh _mesh;
-    Texture _inputTex;
     std::string _windowName;
-
-    // Format
-    Texture::Format _inFmt, _outFmt;
-
-    GLint _glSurfInternalFormat;
-    GLenum _glSurfFormat, _glSurfDataType;
 };
 

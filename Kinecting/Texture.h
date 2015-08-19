@@ -1,5 +1,6 @@
 #pragma once
 #include "stdafx.h"
+#include "Util.h"
 
 class Texture {
 public:
@@ -13,7 +14,7 @@ public:
     Texture();
     ~Texture();
 
-    void init(Format fmt, int w, int h);
+    void init(Format fmt, Dim &size);
     void bind(GLuint prog, GLint ref, int index);
     void setImage(const void *data);
 

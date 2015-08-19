@@ -9,70 +9,18 @@ GLWindow::~GLWindow() {
     closeWindow();
 }
 
-
-void GLWindow::initRenderer() {
-    // Load and compile the shaders
-    shaders.compileShaders();
-
-    // Allocate & setup the textures
-    _inputTex.init(_inFmt, view.dim.width, view.dim.height);
-    shaders.bindTexture(_inputTex, "UInputImg");
-
-    // GL settings
-    glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-    glDisable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
-
-    // Depth mesh
-    _mesh.init(shaders.namedParam("LVertexPos3D").ref);
-
-    // Set frame properties
-    auto p1 = shaders.namedParam("camXDim");
-    auto p2 = shaders.namedParam("camYDim");
-    if (p1.valid()) p1.bindFloat(view.dim.width);
-    if (p2.valid()) p2.bindFloat(view.dim.height);
-
-    auto xz = shaders.namedParam("camXZFactor");
-    auto yz = shaders.namedParam("camYZFactor");
-    if (xz.valid()) xz.bindFloat(tanf((70.6f * M_PI / 180.0f) / 2.0f));
-    if (yz.valid()) yz.bindFloat(tanf((60.0f * M_PI / 180.0f) / 2.0f));
-
-    SDL_GL_SetSwapInterval(0);
-
-    // Disable sRGB 'corrections' - we want true linear colour space for calculations
-    glDisable(GL_FRAMEBUFFER_SRGB);
-
-    if (!checkGl(__FUNCTION__)) throw std::exception("GL init failure");
-}
-
-void GLWindow::showWindow(std::string name, int w, int h) {
+void GLWindow::showWindow(std::string name, Dim &size) {
     if (_window != nullptr) throw std::exception("Window already created!");
-    std::cout << "Initializing window " << w << "x" << h << std::endl;
-
+    std::cout << "Initializing window " << size.width << "x" << size.height << std::endl;
     _windowName = name;
 
-    // Work out the GL texture formats
-    switch (_inFmt) {
-    case Texture::Format::DEPTH:
-        _glSurfInternalFormat = GL_R16UI;
-        _glSurfFormat = GL_RED_INTEGER;
-        _glSurfDataType = GL_UNSIGNED_SHORT;
-        break;
-
-    case Texture::Format::RGB:
-        _glSurfInternalFormat = GL_RGB8;
-        _glSurfFormat = GL_RGB;
-        _glSurfDataType = GL_UNSIGNED_BYTE;
-        break;
-    }
-
     // Window
-    view.dim.width = w; view.dim.height = h;
+    view.dim = size;
     _window = SDL_CreateWindow(
         name.c_str(),
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
-        w, h,
+        size.width, size.height,
         SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
     if (!_window) {
@@ -96,13 +44,14 @@ void GLWindow::showWindow(std::string name, int w, int h) {
     // Clear the stupid GLEW/GL Enum error
     glGetError();
 
-    // VSync
-	if (SDL_GL_SetSwapInterval(1) < 0) {
-		std::cout << "Warning - Could not enable vsync: " << SDL_GetError() << std::endl;
-	}
+	// GL settings
+	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+	SDL_GL_SetSwapInterval(0);
+	glDisable(GL_FRAMEBUFFER_SRGB);
 
-    // OpenGL
-    initRenderer();
+	if (!checkGl(__FUNCTION__)) throw std::exception("GL init failure");
 }
 
 bool GLWindow::checkGl(const char* location) {
@@ -161,43 +110,8 @@ void GLWindow::getFrame(uint32_t ** buff, int * size) {
 
 void GLWindow::closeWindow() {
 	SDL_GL_MakeCurrent(_window, _context);
-    shaders.free();
-
+	scene.free();
     SDL_GL_DeleteContext(_context);
     SDL_DestroyWindow(_window);
     _window = nullptr;
-}
-
-void GLWindow::render() {
-    SDL_GL_MakeCurrent(_window, _context);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Render image quad
-    shaders.use();
-    _mesh.render();
-
-	// Re-clear (?)
-	glClear(GL_DEPTH_BUFFER_BIT);
-
-	// Render virtual objects
-	for (auto obj : _objects) {
-		obj->render();
-	}
-
-    // Swap buffers
-    SDL_GL_SwapWindow(_window);
-}
-
-void GLWindow::setInputImage(const void* data, const Dim *size) {
-    SDL_GL_MakeCurrent(_window, _context);
-	shaders.use();
-
-    if (size && (_inputTex.width != size->width || _inputTex.height != size->height)) {
-        // Re-initialize texture with new input size
-        _inputTex = Texture();
-        _inputTex.init(_inFmt, size->width, size->height);
-        shaders.bindTexture(_inputTex, "UInputImg");
-    }
-
-    _inputTex.setImage(data);
 }

@@ -4,10 +4,8 @@
 #include "stdafx.h"
 
 #include "KinectDevice.h"
-#include "GLNormalWindow.h"
-#include "GLDisplayWindow.h"
-#include "GLDepthWindow.h"
 
+#include "GLWindow.h"
 #include "NormDepthImage.h"
 #include "PointCloud.h"
 #include "GLObject.h"
@@ -31,7 +29,7 @@ auto getTestPng(std::string file) {
 
 int main(int argc, char *args[]) {
     KinectDevice kinect;
-    GLDisplayWindow dispWindow;
+    GLWindow dispWindow;
 
     // Data for testing (load from png)
     //auto testData = getTestPng("normalTestImg");
@@ -44,25 +42,41 @@ int main(int argc, char *args[]) {
         int frame_w = kinect.depthFrameInfo.w;
         int frame_h = kinect.depthFrameInfo.h;
 
-        dispWindow.showWindow("Filled", frame_w, frame_h);
-
         Dim fullSize = { frame_w, frame_h };
-        Dim halfSize = { frame_w / 2, frame_h / 2 };
+        dispWindow.showWindow("Kinecting", fullSize);
+		auto &scene = dispWindow.scene;
+		scene.setCamera(fullSize, kinect.depthFrameInfo.yFov);
 
 		// Storage for raw camera output
-		auto rawData = std::unique_ptr<uint16_t>(new uint16_t[frame_w*frame_h]);
-		auto floatData = std::unique_ptr<float>(new float[frame_w*frame_h]);
-
-        // Begin reading in frames
-        kinect.asyncListen();
+		auto rawData = std::unique_ptr<uint16_t>(new uint16_t[fullSize.area()]);
+		auto floatData = std::unique_ptr<float>(new float[fullSize.area()]);
 
         // Image processing platform
         NormDepthImage img(fullSize);
 
-		// Display object
-		auto obj = dispWindow.createObject();
+		// Display objects
+		//auto obj = dispWindow.createObject();
 
-        // Run the main loop
+		// Camera output surface
+		auto surf = scene.newObject("rgb_frag.glsl", "normal_vertex.glsl");
+		surf->genQuad();
+		surf->bind();
+		
+		Texture normalTex, depthTex;
+		normalTex.init(Texture::BGR, fullSize);
+		depthTex.init(Texture::DEPTH_FLOAT, fullSize);
+
+		surf->shaders.bindTexture(normalTex, "UInputImg");
+		surf->shaders.bindTexture(depthTex, "UInputDepth");
+
+		// Cube
+		auto obj = scene.newObject("object_frag.glsl", "object_vert.glsl");
+		obj->genCuboid();
+		obj->bind();
+
+        // Begin reading in frames...
+        kinect.asyncListen();
+        // ... and run the main loop
         SDL_Event e;
         bool quit = false;
         while (!quit) {
@@ -78,7 +92,7 @@ int main(int argc, char *args[]) {
 
             {
                 // Exception-proof lock for depth read
-                std::lock_guard<decltype(kinect.frameLock)> lck(kinect.frameLock);
+				std::lock_guard<decltype(kinect.frameLock)> lck(kinect.frameLock);
                 memcpy(rawData.get(), kinect.depthData.get(), fullSize.area()*sizeof(uint16_t));
             }
                 
@@ -93,6 +107,10 @@ int main(int argc, char *args[]) {
 
             // Pass to image processor and gui
             img.setDepth(floatData.get());
+
+			dispWindow.activate();
+			surf->shaders.use();
+			depthTex.setImage(floatData.get());
             
             // **************************************************
             // *** Image Processing
@@ -124,7 +142,9 @@ int main(int argc, char *args[]) {
             auto pixels = img.getFormattedImg();
 
             // Display
-            dispWindow.setInputImage(pixels.get(), &fullSize);
+			dispWindow.activate();
+			surf->shaders.use();
+			normalTex.setImage(pixels.get());
             dispWindow.render();
         }
     }
