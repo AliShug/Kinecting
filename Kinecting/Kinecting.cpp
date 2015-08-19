@@ -46,6 +46,7 @@ int main(int argc, char *args[]) {
         dispWindow.showWindow("Kinecting", fullSize);
 		auto &scene = dispWindow.scene;
 		scene.setCamera(fullSize, kinect.depthFrameInfo.yFov);
+		std::cout << scene.camera.fov.x;
 
 		// Storage for raw camera output
 		auto rawData = std::unique_ptr<uint16_t>(new uint16_t[fullSize.area()]);
@@ -54,12 +55,10 @@ int main(int argc, char *args[]) {
         // Image processing platform
         NormDepthImage img(fullSize);
 
-		// Display objects
-		//auto obj = dispWindow.createObject();
 
 		// Camera output surface
 		auto surf = scene.newObject("rgb_frag.glsl", "normal_vertex.glsl");
-		surf->genQuad();
+		surf->genQuad(fullSize);
 		surf->bind();
 		
 		Texture normalTex, depthTex;
@@ -69,10 +68,11 @@ int main(int argc, char *args[]) {
 		surf->shaders.bindTexture(normalTex, "UInputImg");
 		surf->shaders.bindTexture(depthTex, "UInputDepth");
 
-		// Cube
+		// Cube (test)
 		auto obj = scene.newObject("object_frag.glsl", "object_vert.glsl");
 		obj->genCuboid();
 		obj->bind();
+
 
         // Begin reading in frames...
         kinect.asyncListen();
@@ -96,13 +96,13 @@ int main(int argc, char *args[]) {
                 memcpy(rawData.get(), kinect.depthData.get(), fullSize.area()*sizeof(uint16_t));
             }
                 
-            // Convert depth to float-32
+            // Convert depth to float-32 (and mm to m)
             const int count = frame_w * frame_h;
             auto fd = floatData.get();
             auto rd = rawData.get();
 
             for (int i = 0; i < count; i++) {
-                fd[i] = (float) rd[i];
+                fd[i] = float(rd[i]) / 1.0f;
             }
 
             // Pass to image processor and gui

@@ -45,7 +45,7 @@ public:
     ~GLObject() {}
 
     // Object generation functions
-	void genQuad();
+	void genQuad(const Dim &size);
     void genCuboid(float length = 1, float width = 1, float height = 1);
 
     // Binds the object using the current context

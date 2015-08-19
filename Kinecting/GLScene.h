@@ -8,24 +8,29 @@ class GLScene
 {
 public:
 	// Simple camera class
-	struct camera_t {
+	struct Camera {
 		Dim dim;
 		glm::vec2 fov;
 		float aspect;
 
-		glm::vec3 eye, dir;
+		glm::vec3 eye, dir, side, up;
+		glm::vec2 angle = { M_PI / 2, 0.0f };
+		float moveSpeed = 0.1f;
+		float lookSpeed = 0.02f;
 
 		glm::mat4 calcProjection() {
-			return glm::perspective(fov.y, aspect, 0.1f, 1000.0f);
+			return glm::perspective(fov.y/2, aspect, 0.1f, 1000.0f);
 		}
 
-		glm::mat4 calcView() {
-			return glm::lookAt(eye, eye + dir, glm::vec3(0, 1, 0));
-		}
+		glm::mat4 calcView();
+		void handleInput(const SDL_Event &e);
+
 	};
 
-	GLScene();
-	~GLScene();
+	GLScene() {}
+	~GLScene() {
+		free();
+	}
 
 	// Setup camera using specified dimensions
 	void setCamera(Dim &viewPort, float yFov) {
@@ -34,8 +39,7 @@ public:
 		camera.aspect = float(viewPort.width) / float(viewPort.height);
 		camera.fov.x = camera.fov.y * camera.aspect;
 
-		camera.eye = { 0, 1, 2 };
-		camera.dir = { 0, -1, -2 };
+		camera.eye = { 0, 0, -2 };
 	}
 
 	// Generate a new object
@@ -62,7 +66,7 @@ public:
 		}
 	}
 
-	camera_t camera;
+	Camera camera;
 	std::vector<std::shared_ptr<GLObject>> objects;
 };
 

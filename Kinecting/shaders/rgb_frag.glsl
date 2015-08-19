@@ -7,6 +7,7 @@ uniform float camXDim;
 uniform float camYDim;
 
 in vec2 pixelPos;
+in float keep;
 out vec3 LFragment;
 
 void main() {
@@ -19,7 +20,8 @@ void main() {
     LFragment = col;//vec3(0, 0, col.b);
 
     // Write back depth
-    gl_FragDepth = texture(UInputDepth, uv).r / 3000.0f;
+    //gl_FragDepth = texture(UInputDepth, uv).r / 3000.0f;
+    gl_FragDepth = gl_FragCoord.z;
 
     // Hacky target icon thing
     vec2 pos = gl_FragCoord.xy;
@@ -31,4 +33,6 @@ void main() {
         LFragment = vec3(1);
         gl_FragDepth = 0.0f;
     }
+
+    if (keep < 0.9f) discard;
 }

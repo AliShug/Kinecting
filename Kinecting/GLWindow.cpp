@@ -82,6 +82,8 @@ void GLWindow::handleEvent(const SDL_Event &e) {
             capture(_windowName + ".bmp");
         }
     }
+
+	scene.camera.handleInput(e);
 }
 
 void GLWindow::capture(const std::string &file) {

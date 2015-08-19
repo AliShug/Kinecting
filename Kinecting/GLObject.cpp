@@ -12,30 +12,51 @@ GLObject::GLObject(const GLScene *parent, const std::string &fragShader, const s
     shaders.compileShaders();
 }
 
-void GLObject::genQuad() {
-	// Points
-	point_t p0(-1.0f, -1.0f, 0.0f);
-	point_t p1( 1.0f, -1.0f, 0.0f);
-	point_t p2(-1.0f,  1.0f, 0.0f);
-	point_t p3( 1.0f,  1.0f, 0.0f);
 
-	// Normals
+void GLObject::genQuad(const Dim &size) {
+	int xdim = size.width;
+	int ydim = size.height;
+	int xverts = xdim + 1;
+	int yverts = ydim + 1;
+
+	_mesh.vertices.reserve(xverts * yverts);
+
+	// Uniform normals + color
 	normal_t front(0.0f, 0.0f, 1.0f);
 
 	// Color (white)
 	color_t col(1);
 
-	_mesh.vertices = decltype(_mesh.vertices) {
-		// Front
-		{ p0, front, col,{ 0, 1 } },
-		{ p1, front, col,{ 1, 1 } },
-		{ p2, front, col,{ 0, 0 } },
-		{ p3, front, col,{ 1, 0 } },
-	};
+	for (int y = 0; y < yverts; y++) {
+		for (int x = 0; x < xverts; x++) {
+			// Generate 2D point on XY plane
+			point_t pt;
+			pt.x = -1.0f + (2.0f / xdim) * x;
+			pt.y = -1.0f + (2.0f / ydim) * y;
+			pt.z =  0.0f;
 
-	_mesh.indices = decltype(_mesh.indices) {
-		0, 2, 3, 0, 3, 1
-	};
+			// Generate 2D UV coord (flipped Y)
+			uv_t uv;
+			uv.x = (1.0f / xdim) * x;
+			uv.y = 1.0f - (1.0f / ydim) * y;
+
+			_mesh.vertices.push_back({ pt, front, col, uv });
+		}
+	}
+
+	for (int y = 0; y < ydim; y++) {
+		for (int x = 0; x < xdim; x++) {
+			// First triangle
+			_mesh.indices.push_back((y + 0) * xverts + (x + 0));
+			_mesh.indices.push_back((y + 0) * xverts + (x + 1));
+			_mesh.indices.push_back((y + 1) * xverts + (x + 1));
+
+			// Second triangle
+			_mesh.indices.push_back((y + 0) * xverts + (x + 0));
+			_mesh.indices.push_back((y + 1) * xverts + (x + 1));
+			_mesh.indices.push_back((y + 1) * xverts + (x + 0));
+		}
+	}
 }
 
 void GLObject::genCuboid(float length, float width, float height) {
@@ -126,6 +147,7 @@ void GLObject::genCuboid(float length, float width, float height) {
     };
 }
 
+
 void GLObject::bind() {
     // Switch to our shaders
     shaders.use();
@@ -199,9 +221,6 @@ void GLObject::render(const glm::mat4 &vpMat) {
 	if (yz.valid()) yz.bindFloat(tanf((_scene->camera.fov.y * M_PI / 180.0f) / 2.0f));
 
 	// Pump in the transformation matrix
-	static float rot = 0;
-	rot += 0.2f;
-	_transform = glm::rotate(_transform, rot, glm::vec3(0, 1, 1));
 	glm::mat4 mvp = vpMat * _transform;
 
 	auto mvpRef = shaders.namedParam("MatMVP");
