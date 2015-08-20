@@ -57,6 +57,8 @@ void GLObject::genQuad(const Dim &size) {
 			_mesh.indices.push_back((y + 1) * xverts + (x + 0));
 		}
 	}
+
+    _bound = false;
 }
 
 void GLObject::genCuboid(float length, float width, float height) {
@@ -145,8 +147,20 @@ void GLObject::genCuboid(float length, float width, float height) {
         3 + 4 * 5, 1 + 4 * 5, 0 + 4 * 5,
         3 + 4 * 5, 2 + 4 * 5, 1 + 4 * 5
     };
+
+    _bound = false;
 }
 
+void GLObject::genLine(const glm::vec3 &start, const glm::vec3 &end) {
+    glm::vec3 col(0, 0, 0);
+    _mesh.vertices = {
+        { start, { 0, 0, 0 }, col, { 0, 0 } },
+        { end, {0, 0, 0}, col, {0, 0} }
+    };
+    _mesh.indices = { 0, 1 };
+
+    _bound = false;
+}
 
 void GLObject::bind() {
     // Switch to our shaders
@@ -202,9 +216,13 @@ void GLObject::bind() {
 		glEnableVertexAttribArray(uvRef.ref);
 		glVertexAttribPointer(uvRef.ref, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<void*>(offsetof(vertex, uv)));
 	}
+
+    _bound = true;
 }
 
 void GLObject::render(const glm::mat4 &vpMat) {
+    if (!_bound) return;
+
     // Switch to our shaders & mesh VAO
     shaders.use();
 	glBindVertexArray(_mesh.vao);
@@ -229,5 +247,5 @@ void GLObject::render(const glm::mat4 &vpMat) {
 	}
 
 	// Render the object
-	glDrawElements(GL_TRIANGLES, _mesh.indices.size(), GL_UNSIGNED_INT, NULL);
+	glDrawElements(renderMode, _mesh.indices.size(), GL_UNSIGNED_INT, NULL);
 }

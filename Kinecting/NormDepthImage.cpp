@@ -17,7 +17,7 @@ void NormDepthImage::calcNormals(float camXZ, float camYZ) {
             pos.x = ((float)pt.x / (float)dim.width - 0.5f) * 2 * pos.z * camXZ;
             pos.y = ((float)pt.y / (float)dim.height - 0.5f) * 2 * pos.z * camYZ;
 
-            setWPix(pt, pos);
+            setWNorm(pt, pos);
         }
     }
 
@@ -25,16 +25,16 @@ void NormDepthImage::calcNormals(float camXZ, float camYZ) {
     for (pt.y = 0; pt.y < dim.height; pt.y++) {
         for (pt.x = 0; pt.x < dim.width; pt.x++) {
             vec3 norm, a, b;
-            vec3 pos = getWPix(pt);
+            vec3 pos = getWNorm(pt);
 
             // dFdx
             Pt2i x1, x2;
             vec3 p1, p2;
             x1 = pt.offs(-1, 0);
             x2 = pt.offs( 1, 0);
-            if (dim.contains(x1))  p1 = getWPix(x1);
+            if (dim.contains(x1))  p1 = getWNorm(x1);
             else                    p1 = pos;
-            if (dim.contains(x2))  p2 = getWPix(x2);
+            if (dim.contains(x2))  p2 = getWNorm(x2);
             else                    p2 = pos;
 
             // ... a = ?
@@ -43,16 +43,16 @@ void NormDepthImage::calcNormals(float camXZ, float camYZ) {
             // dFdy
             x1 = pt.offs(0, -1);
             x2 = pt.offs(0,  1);
-            if (dim.contains(x1))  p1 = getWPix(x1);
+            if (dim.contains(x1))  p1 = getWNorm(x1);
             else                    p1 = pos;
-            if (dim.contains(x2))  p2 = getWPix(x2);
+            if (dim.contains(x2))  p2 = getWNorm(x2);
             else                    p2 = pos;
 
             // ... b = ?
             b = p2 - p1;
 
             norm = normalize(cross(normalize(a), normalize(b)));
-            setPix(pt, norm);
+            setNorm(pt, norm);
         }
     }
 }
@@ -76,13 +76,13 @@ void NormDepthImage::threshold_gaussNormalBlur(const int radius, float thresh, f
                 continue;
             }
 
-            pixel_t p1 = getPix(pt), p2;
-            pixel_t sum = p1*gauss[0];
+            normal_t p1 = getNorm(pt), p2;
+            normal_t sum = p1*gauss[0];
             float count = 0;
 
             for (int offX = 1; offX < radius; offX++) {
                 if (dim.contains(pt.offs(offX, 0))) {
-                    p2 = getPix(pt.offs(offX, 0));
+                    p2 = getNorm(pt.offs(offX, 0));
                     d2 = getDepth(pt.offs(offX, 0));
 
                     // Threshold
@@ -98,7 +98,7 @@ void NormDepthImage::threshold_gaussNormalBlur(const int radius, float thresh, f
                     }
                 }
                 if (dim.contains(pt.offs(-offX, 0))) {
-                    p2 = getPix(pt.offs(-offX, 0));
+                    p2 = getNorm(pt.offs(-offX, 0));
                     d2 = getDepth(pt.offs(-offX, 0));
 
                     // Threshold
@@ -115,7 +115,7 @@ void NormDepthImage::threshold_gaussNormalBlur(const int radius, float thresh, f
                 }
             }
 
-            setWPix(pt, sum);
+            setWNorm(pt, sum);
             //setWPix(pt, pixel(1, 0, 0));
         }
     }
@@ -129,13 +129,13 @@ void NormDepthImage::threshold_gaussNormalBlur(const int radius, float thresh, f
                 continue;
             }
 
-            pixel_t p1 = getWPix(pt), p2;
-            pixel_t sum = p1*gauss[0];
+            normal_t p1 = getWNorm(pt), p2;
+            normal_t sum = p1*gauss[0];
             float count = 0;
 
             for (int offY = 1; offY < radius; offY++) {
                 if (dim.contains(pt.offs(0, offY))) {
-                    p2 = getWPix(pt.offs(0, offY));
+                    p2 = getWNorm(pt.offs(0, offY));
                     d2 = getDepth(pt.offs(0, offY));
 
                     // Threshold
@@ -151,7 +151,7 @@ void NormDepthImage::threshold_gaussNormalBlur(const int radius, float thresh, f
                     }
                 }
                 if (dim.contains(pt.offs(0, -offY))) {
-                    p2 = getWPix(pt.offs(0, -offY));
+                    p2 = getWNorm(pt.offs(0, -offY));
                     d2 = getDepth(pt.offs(0, -offY));
 
                     // Threshold
@@ -168,7 +168,136 @@ void NormDepthImage::threshold_gaussNormalBlur(const int radius, float thresh, f
                 }
             }
 
-            setPix(pt, sum);
+            setNorm(pt, sum);
+        }
+    }
+}
+
+void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thresh, float dThresh) {
+    using namespace glm;
+    Pt2i pt;
+
+    std::vector<float> gauss;
+    const float param = powf(((float) radius) / 3, 2);
+    for (int i = 0; i < radius; i++) {
+        gauss.push_back(1 / sqrtf(2 * M_PI * param) * expf(-((float) (i*i)) / (2 * param)));
+    };
+
+    // Data
+    auto d = _depth.get();
+    auto n = _data.get();
+    auto wn = _workingData.get();
+
+    // Blur along X
+    int i = 0, j = 0;
+    for (pt.y = 0; pt.y < dim.height; pt.y++) {
+        j = pt.y * dim.width;
+        for (pt.x = 0; pt.x < dim.width; pt.x++) {
+            i = j + pt.x;
+
+            // Skip bad pixels
+            float d1 = d[i], d2;
+            if (d1 < 0) {
+                continue;
+            }
+
+            normal_t p1 = n[i], p2;
+            normal_t sum = p1*gauss[0];
+
+            // left
+            for (int offX = 1; offX < radius; offX++) {
+                if (0 <= pt.x - offX) {
+                    p2 = n[i-offX];
+                    d2 = d[i-offX];
+
+                    // Threshold
+                    if (fabs(p1.r - p2.r) < thresh &&
+                        fabs(p1.g - p2.g) < thresh &&
+                        fabs(p1.b - p2.b) < thresh &&
+                        fabs(d1 - d2) < dThresh) {
+                        sum += p2*gauss[offX];
+                    }
+                    else {
+                        sum += p1*gauss[offX];
+                    }
+                }
+            }
+            // right
+            for (int offX = 1; offX < radius; offX++) {
+                if (pt.x + offX < dim.width) {
+                    p2 = n[i+offX];
+                    d2 = d[i+offX];
+
+                    // Threshold
+                    if (fabs(p1.r - p2.r) < thresh &&
+                        fabs(p1.g - p2.g) < thresh &&
+                        fabs(p1.b - p2.b) < thresh &&
+                        fabs(d1 - d2) < dThresh) {
+                        sum += p2*gauss[offX];
+                    }
+                    else {
+                        sum += p1*gauss[offX];
+                    }
+                }
+            }
+
+            wn[i] = sum;
+        }
+    }
+
+    // Blur along Y
+    for (pt.y = 0; pt.y < dim.height; pt.y++) {
+        j = pt.y * dim.width;
+        for (pt.x = 0; pt.x < dim.width; pt.x++) {
+            i = j + pt.x;
+
+            // Skip bad pixels
+            float d1 = d[i], d2;
+            if (d1 < 0) {
+                continue;
+            }
+
+            normal_t p1 = wn[i], p2;
+            normal_t sum = p1*gauss[0];
+
+            // below
+            for (int offY = 1; offY < radius; offY++) {
+                if (0 <= pt.y - offY) {
+                    p2 = wn[i-offY*dim.width];
+                    d2 = d[i-offY*dim.width];
+
+                    // Threshold
+                    if (fabs(p1.r - p2.r) < thresh &&
+                        fabs(p1.g - p2.g) < thresh &&
+                        fabs(p1.b - p2.b) < thresh &&
+                        fabs(d1 - d2) < dThresh) {
+                        sum += p2*gauss[offY];
+                    }
+                    else {
+                        sum += p1*gauss[offY];
+                    }
+                }
+            }
+            // above
+            for (int offY = 1; offY < radius; offY++) {
+                if (pt.y + offY < dim.height) {
+                    p2 = wn[i+offY*dim.width];
+                    d2 = d[i+offY*dim.width];
+
+                    // Threshold
+                    if (fabs(p1.r - p2.r) < thresh &&
+                        fabs(p1.g - p2.g) < thresh &&
+                        fabs(p1.b - p2.b) < thresh &&
+                        fabs(d1 - d2) < dThresh) {
+                        sum += p2*gauss[offY];
+                    }
+                    else {
+                        sum += p1*gauss[offY];
+                    }
+                }
+            }
+
+            n[i] = sum;
         }
     }
 }
@@ -180,8 +309,8 @@ void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
     // Blur along X
     for (pt.y = 0; pt.y < dim.height; pt.y++) {
         for (pt.x = 0; pt.x < dim.width; pt.x++) {
-            pixel_t p1 = getPix(pt), p2;
-            pixel_t sum = p1;
+            normal_t p1 = getNorm(pt), p2;
+            normal_t sum = p1;
             float count = 1;
 
             // Skip bad pixels
@@ -191,7 +320,7 @@ void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
 
             for (int offX = 1; offX < radius; offX++) {
                 if (dim.contains(pt.offs(offX, 0))) {
-                    p2 = getPix(pt.offs(offX, 0));
+                    p2 = getNorm(pt.offs(offX, 0));
                     // Threshold
                     if (fabs(p1.r - p2.r) < thresh &&
                         fabs(p1.g - p2.g) < thresh &&
@@ -201,7 +330,7 @@ void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
                     }
                 }
                 if (dim.contains(pt.offs(-offX, 0))) {
-                    p2 = getPix(pt.offs(-offX, 0));
+                    p2 = getNorm(pt.offs(-offX, 0));
                     // Threshold
                     if (fabs(p1.r - p2.r) < thresh &&
                         fabs(p1.g - p2.g) < thresh &&
@@ -212,15 +341,15 @@ void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
                 }
             }
 
-            setWPix(pt, sum / count);
+            setWNorm(pt, sum / count);
         }
     }
 
     // Blur along Y
     for (pt.y = 0; pt.y < dim.height; pt.y++) {
         for (pt.x = 0; pt.x < dim.width; pt.x++) {
-            pixel_t p1 = getWPix(pt), p2;
-            pixel_t sum = p1;
+            normal_t p1 = getWNorm(pt), p2;
+            normal_t sum = p1;
             float count = 1;
 
             // Skip bad pixels
@@ -230,7 +359,7 @@ void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
 
             for (int offY = 1; offY < radius; offY++) {
                 if (dim.contains(pt.offs(0, offY))) {
-                    p2 = getWPix(pt.offs(0, offY));
+                    p2 = getWNorm(pt.offs(0, offY));
                     // Threshold
                     if (fabs(p1.r - p2.r) < thresh &&
                         fabs(p1.g - p2.g) < thresh &&
@@ -240,7 +369,7 @@ void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
                     }
                 }
                 if (dim.contains(pt.offs(0, -offY))) {
-                    p2 = getWPix(pt.offs(0, -offY));
+                    p2 = getWNorm(pt.offs(0, -offY));
                     // Threshold
                     if (fabs(p1.r - p2.r) < thresh &&
                         fabs(p1.g - p2.g) < thresh &&
@@ -251,7 +380,7 @@ void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
                 }
             }
 
-            setPix(pt, sum / count);
+            setNorm(pt, sum / count);
         }
     }
 }
@@ -336,12 +465,17 @@ void NormDepthImage::threshold_meanDepthBlur(int radius, float thresh) {
 
 
 void NormDepthImage::threshold_normalFlood(Pt2i seed, float thresh, float dThresh) {
-    // Working in the mask
-    clearMask();
+    if (dim.contains(seed)) {
+        // Working in the mask
+        clearMask();
 
-    // Subclass contains algorithm code and structures
-    _QLinearFill filler(this, thresh, dThresh);
-    filler.fill(seed);
+        // Subclass contains algorithm code and structures
+        _QLinearFill filler(this, thresh, dThresh);
+        filler.fill(seed);
+    }
+    else {
+        std::cerr << "Flood-fill seed outside range" << std::endl;
+    }
 }
 
 // *****************************************************************************************************************
@@ -366,7 +500,7 @@ void NormDepthImage::_QLinearFill::fill(Pt2i seed) {
     pMask = image->_mask.get();
 
     // Starting val
-    pixel_t baseCol = image->getPix(seed);
+    normal_t baseCol = image->getNorm(seed);
     float baseDepth = image->getDepth(seed);
 
     // First call
@@ -441,7 +575,7 @@ void NormDepthImage::_QLinearFill::linFill(int x, int y) {
 }
 
 inline bool NormDepthImage::_QLinearFill::checkPx(int px, int cmp) {
-    pixel_t a, b;
+    normal_t a, b;
     a = pNorm[px]; b = pNorm[cmp];
 
     float aD, bD;

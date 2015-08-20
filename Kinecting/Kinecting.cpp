@@ -70,8 +70,17 @@ int main(int argc, char *args[]) {
 
 		// Cube (test)
 		auto obj = scene.newObject("object_frag.glsl", "object_vert.glsl");
-		obj->genCuboid();
+		obj->genCuboid(0.1f, 0.1f, 0.1f);
 		obj->bind();
+
+        // Tracking line
+        auto trackLine = scene.newObject("solidcolor.glsl", "object_vert.glsl");
+        trackLine->renderMode = GLObject::RenderMode::LINE_STRIP;
+        // .. generated from tracking data
+
+        // Current tracking point
+        Pt2i centre = { fullSize.width / 2, fullSize.height / 2 };
+        Pt2i trackPt = centre;
 
 
         // Begin reading in frames...
@@ -83,6 +92,13 @@ int main(int argc, char *args[]) {
             while (SDL_PollEvent(&e) != 0) {
                 // Handle all waiting events
                 dispWindow.handleEvent(e);
+
+                // Tracking reset
+                if (e.type == SDL_KEYDOWN) {
+                    if (e.key.keysym.scancode == SDL_SCANCODE_R) {
+                        trackPt = centre;
+                    }
+                }
 
                 if (e.type == SDL_QUIT || (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE)) {
                     quit = true;
@@ -124,19 +140,29 @@ int main(int argc, char *args[]) {
             img.calcNormals(camXZ, camYZ);
 
             // Blur preprocess
-            img.threshold_gaussNormalBlur(12, 0.8f, 0.01f);
+            img.OPT_threshold_gaussNormalBlur(12, 0.8f, 0.01f);
             //img.threshold_meanNormalBlur(4, 0.28f);
 
             // Flood-fill
-            //img.threshold_normalFlood({ frame_w / 2, frame_h / 2 }, 0.1f, 0.01f);
+            img.threshold_normalFlood(trackPt, 0.1f, 0.01f);
 
 
             // Now we can generate a point-cloud and get the mean position
             PointCloud pc(img, camXZ, camYZ);
             auto pos = pc.meanPosition();
-            //std::cout << pos.z << std::endl;
-			//obj->setPosition(pos);
 			obj->setPosition({ 0.0f, 0.0f, 0.0f });
+
+            // re-track
+            auto medPos = pc.medianPoint();
+            trackPt.x = int(medPos.screen.x); trackPt.y = int(medPos.screen.y);
+
+            // tracking line
+            trackLine->genLine(medPos.pos, glm::vec3(0));
+            trackLine->bind();
+
+            // tracking object
+            obj->setPosition(medPos.pos);
+
 
             // Pull out a formatted uint32 image
             auto pixels = img.getFormattedImg();

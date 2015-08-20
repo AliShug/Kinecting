@@ -7,8 +7,8 @@
 class NormDepthImage {
 public:
     // Internal types
-    typedef glm::vec3 pixel_t;
-    typedef std::unique_ptr<pixel_t> pixel_p;
+    typedef glm::vec3 normal_t;
+    typedef std::unique_ptr<normal_t> normal_p;
     typedef std::unique_ptr<float> depth_p;
     typedef std::unique_ptr<uint32_t> fmt_p;
     typedef std::unique_ptr<char> mask_p;
@@ -51,7 +51,7 @@ public:
         }
     }
 
-    // Set depth on an already constructed image
+    // Set depth on an already constructed image (in m)
     void setDepth(const float *data) {
         auto d = _depth.get();
         for (int i = 0; i < dim.area(); i++) {
@@ -90,6 +90,7 @@ public:
 
     // Performs a thresholded gaussian(ish) blur on the normals
     void threshold_gaussNormalBlur(int radius, float thresh, float dThresh);
+    void OPT_threshold_gaussNormalBlur(int radius, float thresh, float dThresh);
 
     // Performs a thresholded mean blur on the normals
     void threshold_meanNormalBlur(int radius, float thresh);
@@ -103,11 +104,11 @@ public:
 
 
     // Quick-access methods
-    inline pixel_t getPix(const Pt2i &pt) { return _data.get()[pt.y*dim.width + pt.x]; }
-    inline void setPix(const Pt2i &pt, pixel_t &val) { _data.get()[pt.y*dim.width + pt.x] = val; }
+    inline normal_t getNorm(const Pt2i &pt) { return _data.get()[pt.y*dim.width + pt.x]; }
+    inline void setNorm(const Pt2i &pt, normal_t &val) { _data.get()[pt.y*dim.width + pt.x] = val; }
 
-    inline pixel_t getWPix(const Pt2i &pt) { return _workingData.get()[pt.y*dim.width + pt.x]; }
-    inline void setWPix(const Pt2i &pt, pixel_t &val) { _workingData.get()[pt.y*dim.width + pt.x] = val; }
+    inline normal_t getWNorm(const Pt2i &pt) { return _workingData.get()[pt.y*dim.width + pt.x]; }
+    inline void setWNorm(const Pt2i &pt, normal_t &val) { _workingData.get()[pt.y*dim.width + pt.x] = val; }
 
     inline float getDepth(const Pt2i &pt) { return _depth.get()[pt.y*dim.width + pt.x]; }
     inline void setDepth(const Pt2i &pt, float val) { _depth.get()[pt.y*dim.width + pt.x] = val; }
@@ -125,7 +126,7 @@ public:
 protected:
 
     // Formatting utility function
-    inline uint32_t formatPixel(pixel_t &pix) {
+    inline uint32_t formatPixel(normal_t &pix) {
         uint32_t r, g, b;
         r = (pix.x + 1) * 127.5f;
         g = (pix.y + 1) * 127.5f;
@@ -134,9 +135,9 @@ protected:
     }
 
     // Data members
-    pixel_p _data;
+    normal_p _data;
     depth_p _depth;
-    pixel_p _workingData;
+    normal_p _workingData;
     depth_p _workingDepth;
     mask_p _mask;
 
@@ -175,7 +176,7 @@ protected:
         std::unique_ptr<char> checked;
 
         float *pDepth;
-        pixel_t *pNorm;
+        normal_t *pNorm;
         char *pMask;
     };
 };

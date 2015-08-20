@@ -5,9 +5,11 @@
 class PointCloud {
 public:
     typedef glm::vec3 position_t;
+    typedef glm::vec2 screenpos_t;
     typedef glm::vec3 normal_t;
 
     struct point_t {
+        screenpos_t screen;
         position_t pos;
         normal_t norm;
     };
@@ -18,6 +20,7 @@ public:
 
     // Average position
     position_t meanPosition();
+    point_t medianPoint();
 
 protected:
     typedef std::vector<point_t> cloud_t;

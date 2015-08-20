@@ -34,5 +34,5 @@ void main() {
         gl_FragDepth = 0.0f;
     }
 
-    if (keep < 0.9f) discard;
+    if (keep < 0.9999f) discard;
 }

@@ -8,6 +8,8 @@
 // TODO: Can allow support for older windows versions
 #include "targetver.h" // <-----
 
+#include <immintrin.h>
+
 #include <stdio.h>
 #include <tchar.h>
 #include <iostream>

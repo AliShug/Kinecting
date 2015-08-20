@@ -41,12 +41,18 @@ public:
         GLuint vbo, ibo, vao;
     };
 
+    enum RenderMode {
+        TRIANGLES = GL_TRIANGLES,
+        LINE_STRIP = GL_LINE_STRIP
+    };
+
 	GLObject(const GLScene *parent, const std::string &fragShader, const std::string &vertShader);
     ~GLObject() {}
 
     // Object generation functions
 	void genQuad(const Dim &size);
     void genCuboid(float length = 1, float width = 1, float height = 1);
+    void genLine(const glm::vec3 &start, const glm::vec3 &end);
 
     // Binds the object using the current context
     void bind();
@@ -64,8 +70,11 @@ public:
     // Shader manager
     ShaderManager shaders;
 
+    // Rendering mode
+    RenderMode renderMode = TRIANGLES;
 protected:
     // Member data
+    bool _bound = false;
     mesh _mesh;
 	glm::mat4 _transform; // <- probably want to separate this out..
 	const GLScene *_scene;
