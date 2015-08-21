@@ -8,10 +8,12 @@ class NormDepthImage {
 public:
     // Internal types
     typedef glm::vec3 normal_t;
+    typedef glm::simdVec4 store_t;
     typedef std::unique_ptr<normal_t> normal_p;
     typedef std::unique_ptr<float> depth_p;
     typedef std::unique_ptr<uint32_t> fmt_p;
     typedef std::unique_ptr<char> mask_p;
+    typedef std::unique_ptr<store_t> store_p;
 
     enum Mask {
         NONE = 0,
@@ -20,10 +22,10 @@ public:
 
     // Default constructor just allocates image space
     NormDepthImage(Dim size)
-        : _data(new glm::vec3[size.area()])
-        , _workingData(new glm::vec3[size.area()])
-        , _depth(new float[size.area()])
-        , _workingDepth(new float[size.area()])
+        : _data((store_t*)_aligned_malloc(size.area()*sizeof(store_t), 16))
+        , _workingData((store_t*)_aligned_malloc(size.area()*sizeof(store_t), 16))
+        //, _depth(new float[size.area()])
+        //, _workingDepth(new float[size.area()])
         , _mask(new char[size.area()])
         , dim(size) {
         
@@ -40,23 +42,23 @@ public:
     void setData(const uint32_t *data) {
         auto d = _data.get();
         for (int i = 0; i < dim.area(); i++) {
-            d[i] = glm::vec3(getR(data[i]), getG(data[i]), getB(data[i]));
-            d[i].z /= 255; // correct to [0..1]
+            // Don't write to .w (depth)
+            d[i].z = float(getB(data[i])) / 255; // correct to [0..1]
 
-            d[i].x /= 127.5f;
+            d[i].x = float(getR(data[i])) / 127.5f;
             d[i].x -= 1.0f;
 
-            d[i].y /= 127.5f;
+            d[i].y = float(getG(data[i])) / 127.5f;
             d[i].y -= 1.0f;
         }
     }
 
     // Set depth on an already constructed image (in m)
     void setDepth(const float *data) {
-        auto d = _depth.get();
+        auto d = _data.get();
         for (int i = 0; i < dim.area(); i++) {
-            if (data[i] < 500.0f || data[i] > 4500.0f) d[i] = -100000.0f;
-            else d[i] = data[i] / 1000.0f;
+            if (data[i] < 500.0f || data[i] > 4500.0f)  d[i].w = -100000.0f;
+            else                                        d[i].w = data[i] / 1000.0f;
         }
     }
 
@@ -64,7 +66,7 @@ public:
 
     // Raw data accessors
     auto getRawNormals() { return _data.get(); }
-    auto getRawDepth() { return _depth.get(); }
+    //auto getRawDepth() { return _depth.get(); }
     auto getRawMask() { return _mask.get(); }
 
     // Constructs a formatted 32bpp image from the stored image
@@ -104,21 +106,7 @@ public:
 
 
     // Quick-access methods
-    inline normal_t getNorm(const Pt2i &pt) { return _data.get()[pt.y*dim.width + pt.x]; }
-    inline void setNorm(const Pt2i &pt, normal_t &val) { _data.get()[pt.y*dim.width + pt.x] = val; }
-
-    inline normal_t getWNorm(const Pt2i &pt) { return _workingData.get()[pt.y*dim.width + pt.x]; }
-    inline void setWNorm(const Pt2i &pt, normal_t &val) { _workingData.get()[pt.y*dim.width + pt.x] = val; }
-
-    inline float getDepth(const Pt2i &pt) { return _depth.get()[pt.y*dim.width + pt.x]; }
-    inline void setDepth(const Pt2i &pt, float val) { _depth.get()[pt.y*dim.width + pt.x] = val; }
-
-    inline float getWDepth(const Pt2i &pt) { return _workingDepth.get()[pt.y*dim.width + pt.x]; }
-    inline void setWDepth(const Pt2i &pt, float val) { _workingDepth.get()[pt.y*dim.width + pt.x] = val; }
-
-    inline char getMask(const Pt2i &pt) { return _mask.get()[pt.y*dim.width + pt.x]; }
-    inline void setMask(const Pt2i &pt, char val) { _mask.get()[pt.y*dim.width + pt.x] = val; }
-
+    inline int ptInd(const Pt2i &pt) { return pt.y*dim.width + pt.x; }
 
     // Publicly accessible members
     Dim dim;
@@ -126,7 +114,7 @@ public:
 protected:
 
     // Formatting utility function
-    inline uint32_t formatPixel(normal_t &pix) {
+    inline uint32_t formatPixel(store_t &pix) {
         uint32_t r, g, b;
         r = (pix.x + 1) * 127.5f;
         g = (pix.y + 1) * 127.5f;
@@ -135,10 +123,8 @@ protected:
     }
 
     // Data members
-    normal_p _data;
-    depth_p _depth;
-    normal_p _workingData;
-    depth_p _workingDepth;
+    store_p _data;
+    store_p _workingData;
     mask_p _mask;
 
 
@@ -158,8 +144,7 @@ protected:
         _QLinearFill(NormDepthImage *nd, float thresh, float dThresh)
             : size(nd->dim)
             , image(nd)
-            , tol(thresh)
-            , dTol(dThresh)
+            , tol(thresh, thresh, thresh, dThresh)
             , checked(new char[size.area()]) {}
 
         ~_QLinearFill() {}
@@ -170,14 +155,16 @@ protected:
 
         Dim size;
         NormDepthImage *image;
-        float tol, dTol;
+        store_t tol;
 
         std::queue<FillRange> rangeQueue;
         std::unique_ptr<char> checked;
 
-        float *pDepth;
-        normal_t *pNorm;
+        //float *pDepth;
+        //normal_t *pNorm;
         char *pMask;
+
+        store_t *pData;
     };
 };
 
