@@ -13,7 +13,7 @@ public:
     typedef std::unique_ptr<float> depth_p;
     typedef std::unique_ptr<uint32_t> fmt_p;
     typedef std::unique_ptr<char> mask_p;
-    typedef std::unique_ptr<store_t> store_p;
+    typedef std::unique_ptr<store_t, aligned_free> store_p;
 
     enum Mask {
         NONE = 0,
@@ -22,8 +22,8 @@ public:
 
     // Default constructor just allocates image space
     NormDepthImage(Dim size)
-        : _data((store_t*)_aligned_malloc(size.area()*sizeof(store_t), 16))
-        , _workingData((store_t*)_aligned_malloc(size.area()*sizeof(store_t), 16))
+        : _data(aligned_malloc<store_t>(size.area(), 16))
+        , _workingData(aligned_malloc<store_t>(size.area(), 16))
         //, _depth(new float[size.area()])
         //, _workingDepth(new float[size.area()])
         , _mask(new char[size.area()])
@@ -43,13 +43,15 @@ public:
         auto d = _data.get();
         for (int i = 0; i < dim.area(); i++) {
             // Don't write to .w (depth)
-            d[i].z = float(getB(data[i])) / 255; // correct to [0..1]
+			auto writeable = glm::vec4_cast(d[i]);
+            writeable.z = float(getB(data[i])) / 255; // correct to [0..1]
 
-            d[i].x = float(getR(data[i])) / 127.5f;
-            d[i].x -= 1.0f;
+            writeable.x = float(getR(data[i])) / 127.5f;
+            writeable.x -= 1.0f;
 
-            d[i].y = float(getG(data[i])) / 127.5f;
-            d[i].y -= 1.0f;
+            writeable.y = float(getG(data[i])) / 127.5f;
+            writeable.y -= 1.0f;
+			d[i] = store_t(writeable);
         }
     }
 
@@ -57,8 +59,10 @@ public:
     void setDepth(const float *data) {
         auto d = _data.get();
         for (int i = 0; i < dim.area(); i++) {
-            if (data[i] < 500.0f || data[i] > 4500.0f)  d[i].w = -100000.0f;
-            else                                        d[i].w = data[i] / 1000.0f;
+			auto writeable = glm::vec4_cast(d[i]);
+            if (data[i] < 500.0f || data[i] > 4500.0f)  writeable.w = -100000.0f;
+            else                                        writeable.w = data[i] / 1000.0f;
+			d[i] = store_t(writeable);
         }
     }
 
@@ -66,7 +70,6 @@ public:
 
     // Raw data accessors
     auto getRawNormals() { return _data.get(); }
-    //auto getRawDepth() { return _depth.get(); }
     auto getRawMask() { return _mask.get(); }
 
     // Constructs a formatted 32bpp image from the stored image
@@ -107,6 +110,10 @@ public:
 
     // Quick-access methods
     inline int ptInd(const Pt2i &pt) { return pt.y*dim.width + pt.x; }
+	inline char getMask(const Pt2i &pt) { return _mask.get()[ptInd(pt)]; }
+	inline char getDepth(const Pt2i &pt) {
+		return glm::vec4_cast(_data.get()[ptInd(pt)]).w;
+	}
 
     // Publicly accessible members
     Dim dim;
@@ -116,9 +123,10 @@ protected:
     // Formatting utility function
     inline uint32_t formatPixel(store_t &pix) {
         uint32_t r, g, b;
-        r = (pix.x + 1) * 127.5f;
-        g = (pix.y + 1) * 127.5f;
-        b = (pix.z * 255);
+		auto castPix = glm::vec4_cast(pix);
+        r = (castPix.x + 1) * 127.5f;
+        g = (castPix.y + 1) * 127.5f;
+        b = (castPix.z * 255);
         return 0xFF000000 | r << 16 | g << 8 | b;
     }
 

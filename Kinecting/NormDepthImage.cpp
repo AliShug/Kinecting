@@ -4,20 +4,22 @@
 void NormDepthImage::calcNormals(float camXZ, float camYZ) {
     using namespace glm;
     Pt2i pt;
+	auto dd = _data.get();
+	auto wd = _workingData.get();
+	store_t pix;
 
-    auto dd = _depth.get();
-    auto nd = _data.get();
-
-    // First pass calculates the camera-space position of each depth pixel
+    // First pass calculates the camera-space position of each depth pixel,
+	// storing it in the working buffer
     for (pt.y = 0; pt.y < dim.height; pt.y++) {
         for (pt.x = 0; pt.x < dim.width; pt.x++) {
             vec3 pos;
-            pos.z = getDepth(pt);
+			pix = dd[ptInd(pt)];
+			pos.z = pix.Data.m128_f32[3];
 
             pos.x = ((float)pt.x / (float)dim.width - 0.5f) * 2 * pos.z * camXZ;
             pos.y = ((float)pt.y / (float)dim.height - 0.5f) * 2 * pos.z * camYZ;
 
-            setWNorm(pt, pos);
+            wd[ptInd(pt)] = store_t(pos, pos.z);
         }
     }
 
@@ -25,17 +27,17 @@ void NormDepthImage::calcNormals(float camXZ, float camYZ) {
     for (pt.y = 0; pt.y < dim.height; pt.y++) {
         for (pt.x = 0; pt.x < dim.width; pt.x++) {
             vec3 norm, a, b;
-            vec3 pos = getWNorm(pt);
+			vec3 pos = vec4_cast(wd[ptInd(pt)]).xyz;
 
             // dFdx
             Pt2i x1, x2;
             vec3 p1, p2;
             x1 = pt.offs(-1, 0);
             x2 = pt.offs( 1, 0);
-            if (dim.contains(x1))  p1 = getWNorm(x1);
-            else                    p1 = pos;
-            if (dim.contains(x2))  p2 = getWNorm(x2);
-            else                    p2 = pos;
+            if (dim.contains(x1))  p1 = vec4_cast(wd[ptInd(x1)]).xyz;
+            else                   p1 = pos;
+            if (dim.contains(x2))  p2 = vec4_cast(wd[ptInd(x2)]).xyz;
+            else                   p2 = pos;
 
             // ... a = ?
             a = p2 - p1;
@@ -43,22 +45,23 @@ void NormDepthImage::calcNormals(float camXZ, float camYZ) {
             // dFdy
             x1 = pt.offs(0, -1);
             x2 = pt.offs(0,  1);
-            if (dim.contains(x1))  p1 = getWNorm(x1);
-            else                    p1 = pos;
-            if (dim.contains(x2))  p2 = getWNorm(x2);
-            else                    p2 = pos;
+            if (dim.contains(x1))  p1 = vec4_cast(wd[ptInd(x1)]).xyz;
+            else                   p1 = pos;
+            if (dim.contains(x2))  p2 = vec4_cast(wd[ptInd(x2)]).xyz;
+            else                   p2 = pos;
 
             // ... b = ?
             b = p2 - p1;
 
             norm = normalize(cross(normalize(a), normalize(b)));
-            setNorm(pt, norm);
+            dd[ptInd(pt)] = store_t(norm, pos.z);
         }
     }
 }
 
 void NormDepthImage::threshold_gaussNormalBlur(const int radius, float thresh, float dThresh) {
-    using namespace glm;
+	OPT_threshold_gaussNormalBlur(radius, thresh, dThresh);
+    /*using namespace glm;
     Pt2i pt;
     
     std::vector<float> gauss;
@@ -170,7 +173,7 @@ void NormDepthImage::threshold_gaussNormalBlur(const int radius, float thresh, f
 
             setNorm(pt, sum);
         }
-    }
+    }*/
 }
 
 void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thresh, float dThresh) {
@@ -178,16 +181,17 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
     Pt2i pt;
 
     // Gaussian values pre-distributed into vector of vector-types for fast SIMD multiplication
-    std::vector<store_t> gauss;
+    store_p gauss(aligned_malloc<store_t>(radius, 16));
     const float param = powf(((float) radius) / 3, 2);
     for (int i = 0; i < radius; i++) {
-        gauss.push_back(store_t(1 / sqrtf(2 * M_PI * param) * expf(-((float) (i*i)) / (2 * param))));
+        gauss.get()[i] = store_t(1 / sqrtf(2 * M_PI * param) * expf(-((float) (i*i)) / (2 * param)));
     };
 
     // Data
     store_t p1, p2, sum;
     __m128 res;
     auto n = _data.get();
+	auto g = gauss.get();
     auto wn = _workingData.get();
 
     // Comparison values for threshold
@@ -209,7 +213,7 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
             }
 
             // Running total
-            sum = p1*gauss[0];
+            sum = p1*g[0];
 
             // left
             for (int offX = 1; offX < radius; offX++) {
@@ -221,10 +225,10 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
                     res = _mm_cmp_ss((p1 - p2).Data, test.Data, _CMP_LT_OQ);
                     // check they're all 1 (<thresh)
                     if (_mm_testc_ps(res, allOnes.Data)) {
-                        sum += p2*gauss[offX];
+                        sum += p2*g[offX];
                     }
                     else {
-                        sum += p1*gauss[offX];
+                        sum += p1*g[offX];
                     }
                 }
             }
@@ -238,10 +242,10 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
                     res = _mm_cmp_ss((p1 - p2).Data, test.Data, _CMP_LT_OQ);
                     // check they're all 1 (<thresh)
                     if (_mm_testc_ps(res, allOnes.Data)) {
-                        sum += p2*gauss[offX];
+                        sum += p2*g[offX];
                     }
                     else {
-                        sum += p1*gauss[offX];
+                        sum += p1*g[offX];
                     }
                 }
             }
@@ -263,7 +267,7 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
                 continue;
             }
 
-            sum = p1*gauss[0];
+            sum = p1*g[0];
 
             // below
             for (int offY = 1; offY < radius; offY++) {
@@ -275,10 +279,10 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
                     res = _mm_cmp_ss((p1 - p2).Data, test.Data, _CMP_LT_OQ);
                     // check they're all 1 (<thresh)
                     if (_mm_testc_ps(res, allOnes.Data)) {
-                        sum += p2*gauss[offY];
+                        sum += p2*g[offY];
                     }
                     else {
-                        sum += p1*gauss[offY];
+                        sum += p1*g[offY];
                     }
                 }
             }
@@ -292,10 +296,10 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
                     res = _mm_cmp_ss((p1 - p2).Data, test.Data, _CMP_LT_OQ);
                     // check they're all 1 (<thresh)
                     if (_mm_testc_ps(res, allOnes.Data)) {
-                        sum += p2*gauss[offY];
+                        sum += p2*g[offY];
                     }
                     else {
-                        sum += p1*gauss[offY];
+                        sum += p1*g[offY];
                     }
                 }
             }
@@ -307,7 +311,8 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
 }
 
 void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
-    using namespace glm;
+	throw "Unsupported operation";
+    /*using namespace glm;
     Pt2i pt;
     
     // Blur along X
@@ -386,11 +391,12 @@ void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
 
             setNorm(pt, sum / count);
         }
-    }
+    }*/
 }
 
 void NormDepthImage::threshold_meanDepthBlur(int radius, float thresh) {
-    using namespace glm;
+	throw "Unsupported operation";
+    /*using namespace glm;
 
     Pt2i pt;
     
@@ -464,7 +470,7 @@ void NormDepthImage::threshold_meanDepthBlur(int radius, float thresh) {
 
             setDepth(pt, sum / count);
         }
-    }
+    }*/
 }
 
 

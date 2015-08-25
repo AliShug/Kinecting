@@ -9,6 +9,7 @@
 #include "targetver.h" // <-----
 
 #include <immintrin.h>
+#include <malloc.h>
 
 #include <stdio.h>
 #include <tchar.h>
