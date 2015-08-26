@@ -8,6 +8,10 @@
 // TODO: Can allow support for older windows versions
 #include "targetver.h" // <-----
 
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
 #include <immintrin.h>
 #include <malloc.h>
 
@@ -39,6 +43,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/simd_vec4.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 #include <FreeImage.h>
 

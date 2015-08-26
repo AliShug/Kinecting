@@ -111,7 +111,7 @@ public:
     // Quick-access methods
     inline int ptInd(const Pt2i &pt) { return pt.y*dim.width + pt.x; }
 	inline char getMask(const Pt2i &pt) { return _mask.get()[ptInd(pt)]; }
-	inline char getDepth(const Pt2i &pt) {
+	inline float getDepth(const Pt2i &pt) {
 		return glm::vec4_cast(_data.get()[ptInd(pt)]).w;
 	}
 

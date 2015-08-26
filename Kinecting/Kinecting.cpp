@@ -58,6 +58,7 @@ int main(int argc, char *args[]) {
 
 		// Camera output surface
 		auto surf = scene.newObject("rgb_frag.glsl", "normal_vertex.glsl");
+		surf->renderMode = GLObject::RenderMode::POINTS;
 		surf->genQuad(fullSize);
 		surf->bind();
 		
@@ -78,9 +79,18 @@ int main(int argc, char *args[]) {
         trackLine->renderMode = GLObject::RenderMode::LINE_STRIP;
         // .. generated from tracking data
 
+		// Tracked cloud
+		auto frangibleCloud = scene.newObject("solidcolor.glsl", "object_vert.glsl");
+		frangibleCloud->renderMode = GLObject::RenderMode::POINTS;
+		frangibleCloud->pointSize = 3.0f;
+
         // Current tracking point
         Pt2i centre = { fullSize.width / 2, fullSize.height / 2 };
         Pt2i trackPt = centre;
+
+		// TEMP
+		// hide surface
+		surf->hide();
 
 
         // Begin reading in frames...
@@ -147,21 +157,27 @@ int main(int argc, char *args[]) {
             img.threshold_normalFlood(trackPt, 0.1f, 0.01f);
 
 
-            // Now we can generate a point-cloud and get the mean position
+            // Now we can generate a point-cloud
             PointCloud pc(img, camXZ, camYZ);
-            auto pos = pc.meanPosition();
-			obj->setPosition({ 0.0f, 0.0f, 0.0f });
+            // Display it
+			frangibleCloud->genPointCloud(pc);
+			frangibleCloud->bind();
+
 
             // re-track
             auto medPos = pc.medianPoint();
             trackPt.x = int(medPos.screen.x); trackPt.y = int(medPos.screen.y);
+
+			// center the frangible cloud
+			auto invPos = glm::translate(glm::mat4(), -medPos.pos);
+			frangibleCloud->applyTransform(invPos);
 
             // tracking line
             trackLine->genLine(medPos.pos, glm::vec3(0));
             trackLine->bind();
 
             // tracking object
-            obj->setPosition(pos);
+            obj->setPosition(medPos.pos);
 
 
             // Pull out a formatted uint32 image
@@ -186,5 +202,8 @@ int main(int argc, char *args[]) {
 
     // Explicit cleanup (mainly for SDL subsystems)
     GLWindow::ReleaseGUI();
+	#ifdef _DEBUG
+		_CrtDumpMemoryLeaks();
+	#endif
     return 0;
 }

@@ -14,6 +14,8 @@ public:
         normal_t norm;
     };
 
+	typedef std::vector<point_t> cloud_t;
+
     // Generate a point cloud from an (optionally) masked normal/depth image
     PointCloud(NormDepthImage &source, float camXZ, float camYZ);
     ~PointCloud() = default;
@@ -22,9 +24,7 @@ public:
     position_t meanPosition();
     point_t medianPoint();
 
-protected:
-    typedef std::vector<point_t> cloud_t;
-
-    cloud_t _cloud;
+	// Internal cloud
+    cloud_t cloud;
 };
 

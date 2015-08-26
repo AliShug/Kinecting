@@ -112,7 +112,7 @@ void GLWindow::getFrame(uint32_t ** buff, int * size) {
 
 void GLWindow::closeWindow() {
 	SDL_GL_MakeCurrent(_window, _context);
-	scene.free();
+	scene.release();
     SDL_GL_DeleteContext(_context);
     SDL_DestroyWindow(_window);
     _window = nullptr;

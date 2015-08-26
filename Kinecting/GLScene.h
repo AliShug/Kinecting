@@ -29,7 +29,7 @@ public:
 
 	GLScene() {}
 	~GLScene() {
-		free();
+		release();
 	}
 
 	// Setup camera using specified dimensions
@@ -60,9 +60,9 @@ public:
 	}
 
 	// Free resources
-	void free() {
+	void release() {
 		for (auto obj : objects) {
-			obj->shaders.free();
+			obj->shaders.release();
 		}
 	}
 

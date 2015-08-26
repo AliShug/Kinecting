@@ -37,7 +37,7 @@ public:
 
     ShaderManager() {}
     ~ShaderManager() {
-		free();
+		release();
 	}
 
 	// Loads, compiles and parses the chosen shaders
@@ -51,7 +51,7 @@ public:
 		}
 	}
 
-    void free() {
+    void release() {
         if (programID != -1) glDeleteProgram(programID);
         programID = -1;
     }

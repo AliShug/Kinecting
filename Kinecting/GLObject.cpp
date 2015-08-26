@@ -162,6 +162,20 @@ void GLObject::genLine(const glm::vec3 &start, const glm::vec3 &end) {
     _bound = false;
 }
 
+void GLObject::genPointCloud(const PointCloud &pc) {
+	_mesh.vertices.clear();
+	_mesh.indices.clear();
+
+	glm::vec3 col(1, 0, 1);
+	for (int i = 0; i < pc.cloud.size(); i++) {
+		auto pt = pc.cloud[i];
+		_mesh.vertices.push_back({ pt.pos, {0, 0, 0}, col, {0, 0} });
+		_mesh.indices.push_back(i);
+	}
+
+	_bound = false;
+}
+
 void GLObject::bind() {
     // Switch to our shaders
     shaders.use();
@@ -185,16 +199,23 @@ void GLObject::bind() {
 	auto uvRef = shaders.namedParam("uv");
 
     // Create & bind VAO (this encapsulates the other states)
-    glGenVertexArrays(1, &_mesh.vao);
-    glBindVertexArray(_mesh.vao);
+	if (!_ownsVAO) {
+		glGenVertexArrays(1, &_mesh.vao);
+		glBindVertexArray(_mesh.vao);
 
-    // Create the VBO
-    glGenBuffers(1, &_mesh.vbo);
+		glGenBuffers(1, &_mesh.vbo);
+		glGenBuffers(1, &_mesh.ibo);
+		_ownsVAO = true;
+	}
+	else {
+		glBindVertexArray(_mesh.vao);
+	}
+
+    // Bind the VBO
     glBindBuffer(GL_ARRAY_BUFFER, _mesh.vbo);
     glBufferData(GL_ARRAY_BUFFER, _mesh.vertices.size() * sizeof(vertex), _mesh.vertices.data(), GL_STATIC_DRAW);
 
-    // Create IBO
-    glGenBuffers(1, &_mesh.ibo);
+    // Bind the IBO
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _mesh.ibo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, _mesh.indices.size() * sizeof(GLuint), _mesh.indices.data(), GL_STATIC_DRAW);
 
@@ -221,7 +242,7 @@ void GLObject::bind() {
 }
 
 void GLObject::render(const glm::mat4 &vpMat) {
-    if (!_bound) return;
+    if (!_bound || _hidden) return;
 
     // Switch to our shaders & mesh VAO
     shaders.use();
@@ -239,13 +260,27 @@ void GLObject::render(const glm::mat4 &vpMat) {
 	if (yz.valid()) yz.bindFloat(tanf((_scene->camera.fov.y * M_PI / 180.0f) / 2.0f));
 
 	// Pump in the transformation matrix
-	glm::mat4 mvp = vpMat * _transform;
-
 	auto mvpRef = shaders.namedParam("MatMVP");
 	if (mvpRef.valid()) {
+		glm::mat4 mvp = vpMat * getTransform();
 		mvpRef.bindMat4(mvp);
+	}
+
+	// Points
+	if (renderMode == POINTS) {
+		glPointSize(pointSize);
 	}
 
 	// Render the object
 	glDrawElements(renderMode, _mesh.indices.size(), GL_UNSIGNED_INT, NULL);
+}
+
+void GLObject::applyTransform(const glm::mat4 &mat) {
+	for (auto &vert : _mesh.vertices) {
+		glm::vec4 pos4(vert.pos, 1.0f);
+		pos4 = mat * pos4;
+		vert.pos = pos4.xyz;
+	}
+
+	bind();
 }

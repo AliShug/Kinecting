@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "ShaderManager.h"
+#include "PointCloud.h"
 
 class GLScene;
 
@@ -43,7 +44,8 @@ public:
 
     enum RenderMode {
         TRIANGLES = GL_TRIANGLES,
-        LINE_STRIP = GL_LINE_STRIP
+        LINE_STRIP = GL_LINE_STRIP,
+		POINTS = GL_POINTS
     };
 
 	GLObject(const GLScene *parent, const std::string &fragShader, const std::string &vertShader);
@@ -53,6 +55,7 @@ public:
 	void genQuad(const Dim &size);
     void genCuboid(float length = 1, float width = 1, float height = 1);
     void genLine(const glm::vec3 &start, const glm::vec3 &end);
+	void genPointCloud(const PointCloud &pc);
 
     // Binds the object using the current context
     void bind();
@@ -61,22 +64,40 @@ public:
     void render(const glm::mat4 &vpMat);
 
 	// Get the object's transformation
-	glm::mat4 getTransform() { return _transform; }
+	glm::mat4 getTransform() {
+		_transform = _position * _rotation;
+		return _transform;
+	}
 
 	void setPosition(glm::vec3 pos) {
-		_transform = glm::translate(glm::mat4(), pos);
+		_position = glm::translate(glm::mat4(), pos);
 	}
+
+	void setRotation(glm::vec3 rotate) {
+		_rotation = glm::orientate4(rotate);
+	}
+
+	// Applies a transformation to the object's vertices (direct modification)
+	void applyTransform(const glm::mat4 &mat);
 
     // Shader manager
     ShaderManager shaders;
 
     // Rendering mode
     RenderMode renderMode = TRIANGLES;
+	float pointSize = 1.0f;
+
+	void hide() { _hidden = true; }
+	void unhide() { _hidden = false; }
+
 protected:
     // Member data
+	bool _hidden = false;
     bool _bound = false;
+	bool _ownsVAO = false;
     mesh _mesh;
-	glm::mat4 _transform; // <- probably want to separate this out..
+	glm::mat4 _transform;
+	glm::mat4 _position, _rotation;
 	const GLScene *_scene;
 };
 
