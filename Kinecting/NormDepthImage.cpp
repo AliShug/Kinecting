@@ -55,6 +55,10 @@ void NormDepthImage::calcNormals(float camXZ, float camYZ) {
 
             norm = normalize(cross(normalize(a), normalize(b)));
             dd[ptInd(pt)] = store_t(norm, pos.z);
+
+			if (pos.z < 0.0f) {
+				dd[ptInd(pt)] = store_t(0.0f, 0.0f, 0.0f, -1.0f);
+			}
         }
     }
 }
@@ -188,7 +192,7 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
     };
 
     // Data
-    store_t p1, p2, sum;
+    store_t p1, p2, sum, diff;
     __m128 res;
 	auto g = gauss.get();
     auto n = _data.get();
@@ -222,7 +226,11 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
 
                     // Threshold
                     // sub and compare to threshold values
-                    res = _mm_cmp_ss(glm::abs(p1 - p2).Data, test.Data, _CMP_LT_OQ);
+					diff = p2 - p1;
+					for (int i = 0; i < 4; i++) {
+						diff.Data.m128_f32[i] = fabs(diff.Data.m128_f32[i]);
+					}
+                    res = _mm_cmp_ps(diff.Data, test.Data, _CMP_LT_OQ);
                     // check they're all 1 (<thresh)
                     if (_mm_testc_ps(res, allOnes.Data)) {
                         sum += p2*g[offX];
@@ -240,7 +248,11 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
 
                     // Threshold
                     // sub and compare to threshold values
-                    res = _mm_cmp_ss(glm::abs(p1 - p2).Data, test.Data, _CMP_LT_OQ);
+					diff = p2 - p1;
+					for (int i = 0; i < 4; i++) {
+						diff.Data.m128_f32[i] = fabs(diff.Data.m128_f32[i]);
+					}
+					res = _mm_cmp_ps(diff.Data, test.Data, _CMP_LT_OQ);
                     // check they're all 1 (<thresh)
                     if (_mm_testc_ps(res, allOnes.Data)) {
                         sum += p2*g[offX];
@@ -252,7 +264,10 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
 				else continue;
             }
 
-            sum.Data.m128_f32[3] = p1.Data.m128_f32[3];
+
+            sum.Data.m128_f32[3] = 0.0f;
+			sum = glm::fastNormalize(sum);
+			sum.Data.m128_f32[3] = p1.Data.m128_f32[3];
             wn[i] = sum;
         }
     }
@@ -274,11 +289,15 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
             // below
             for (int offY = 1; offY < radius; offY++) {
                 if (0 <= pt.y - offY) {
-                    p2 = n[i - offY*dim.width];
+                    p2 = wn[i - offY*dim.width];
 
                     // Threshold
                     // sub and compare to threshold values
-                    res = _mm_cmp_ss(glm::abs(p1 - p2).Data, test.Data, _CMP_LT_OQ);
+					diff = p2 - p1;
+					for (int i = 0; i < 4; i++) {
+						diff.Data.m128_f32[i] = fabs(diff.Data.m128_f32[i]);
+					}
+					res = _mm_cmp_ps(diff.Data, test.Data, _CMP_LT_OQ);
                     // check they're all 1 (<thresh)
                     if (_mm_testc_ps(res, allOnes.Data)) {
                         sum += p2*g[offY];
@@ -292,11 +311,15 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
             // above
             for (int offY = 1; offY < radius; offY++) {
                 if (pt.y + offY < dim.height) {
-                    p2 = n[i + offY*dim.width];
+                    p2 = wn[i + offY*dim.width];
 
                     // Threshold
                     // sub and compare to threshold values
-                    res = _mm_cmp_ss(glm::abs(p1 - p2).Data, test.Data, _CMP_LT_OQ);
+					diff = p2 - p1;
+					for (int i = 0; i < 4; i++) {
+						diff.Data.m128_f32[i] = fabs(diff.Data.m128_f32[i]);
+					}
+					res = _mm_cmp_ps(diff.Data, test.Data, _CMP_LT_OQ);
                     // check they're all 1 (<thresh)
                     if (_mm_testc_ps(res, allOnes.Data)) {
                         sum += p2*g[offY];
@@ -308,8 +331,10 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
 				else continue;
             }
 
-            sum.Data.m128_f32[3] = p1.Data.m128_f32[3];
-            n[i] = sum;
+            sum.Data.m128_f32[3] = 0.0f;
+			sum = glm::fastNormalize(sum);
+			sum.Data.m128_f32[3] = p1.Data.m128_f32[3];
+			n[i] = sum;
         }
     }
 }
@@ -594,8 +619,14 @@ inline bool NormDepthImage::_QLinearFill::checkPx(int px, int cmp) {
     __m128 res;
     a = pData[px]; b = pData[cmp];
 
+	if (b.Data.m128_f32[3] <= 0.5f) return false;
+
     // Test if abs(a-b) < tol | dTol per-component
-    res = _mm_cmp_ss((glm::abs(a - b)).Data, tol.Data, _CMP_LT_OQ);
+	store_t diff = a - b;
+	for (int i = 0; i < 4; i++) {
+		diff.Data.m128_f32[i] = fabs(diff.Data.m128_f32[i]);
+	}
+	res = _mm_cmp_ps(diff.Data, tol.Data, _CMP_LT_OQ);
     // check they're all 1 (<thresh)
     return _mm_testc_ps(res, allOnes.Data);
 }

@@ -161,7 +161,7 @@ int main(int argc, char *args[]) {
             trackLine->bind();
 
             // tracking object
-            obj->setPosition(medPos.pos);
+            obj->setPosition(pos);
 
 
             // Pull out a formatted uint32 image

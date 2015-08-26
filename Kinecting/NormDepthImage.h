@@ -60,7 +60,7 @@ public:
         auto d = _data.get();
         for (int i = 0; i < dim.area(); i++) {
 			auto writeable = glm::vec4_cast(d[i]);
-            if (data[i] < 500.0f || data[i] > 4500.0f)  writeable.w = -100000.0f;
+            if (data[i] < 500.0f || data[i] > 4500.0f)  writeable.w = -1.0f;
             else                                        writeable.w = data[i] / 1000.0f;
 			d[i] = store_t(writeable);
         }
