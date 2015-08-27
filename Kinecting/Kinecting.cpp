@@ -28,6 +28,11 @@ auto getTestPng(std::string file) {
 }
 
 int main(int argc, char *args[]) {
+	HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
+	CONSOLE_SCREEN_BUFFER_INFO conInfo;
+	GetConsoleScreenBufferInfo(hCon, &conInfo);
+	int screenChars = (conInfo.srWindow.Bottom + 1) * (conInfo.srWindow.Right + 1);
+
     KinectDevice kinect;
     GLWindow dispWindow;
 
@@ -55,12 +60,11 @@ int main(int argc, char *args[]) {
         // Image processing platform
         NormDepthImage img(fullSize);
 
-
+		
 		// Camera output surface
 		auto surf = scene.newObject("rgb_frag.glsl", "normal_vertex.glsl");
 		surf->renderMode = GLObject::RenderMode::POINTS;
 		surf->genQuad(fullSize);
-		surf->bind();
 		
 		Texture normalTex, depthTex;
 		normalTex.init(Texture::BGR, fullSize);
@@ -72,12 +76,14 @@ int main(int argc, char *args[]) {
 		// Cube (test)
 		auto obj = scene.newObject("object_frag.glsl", "object_vert.glsl");
 		obj->genCuboid(0.1f, 0.1f, 0.1f);
-		obj->bind();
 
         // Tracking line
-        auto trackLine = scene.newObject("solidcolor.glsl", "object_vert.glsl");
-        trackLine->renderMode = GLObject::RenderMode::LINE_STRIP;
-        // .. generated from tracking data
+        auto trackLine0 = scene.newObject("solidcolor.glsl", "object_vert.glsl");
+        trackLine0->renderMode = GLObject::RenderMode::LINE_STRIP;
+		auto trackLine1 = scene.newObject("solidcolor.glsl", "object_vert.glsl");
+		trackLine1->renderMode = GLObject::RenderMode::LINE_STRIP;
+		auto trackLine2 = scene.newObject("solidcolor.glsl", "object_vert.glsl");
+		trackLine2->renderMode = GLObject::RenderMode::LINE_STRIP;
 
 		// Tracked cloud
 		auto frangibleCloud = scene.newObject("solidcolor.glsl", "object_vert.glsl");
@@ -156,13 +162,10 @@ int main(int argc, char *args[]) {
             // Flood-fill
             img.threshold_normalFlood(trackPt, 0.1f, 0.01f);
 
-
             // Now we can generate a point-cloud
             PointCloud pc(img, camXZ, camYZ);
             // Display it
 			frangibleCloud->genPointCloud(pc);
-			frangibleCloud->bind();
-
 
             // re-track
             auto medPos = pc.medianPoint();
@@ -170,11 +173,10 @@ int main(int argc, char *args[]) {
 
 			// center the frangible cloud
 			auto invPos = glm::translate(glm::mat4(), -medPos.pos);
-			frangibleCloud->applyTransform(invPos);
+			//frangibleCloud->applyTransform(invPos);
 
             // tracking line
-            trackLine->genLine(medPos.pos, glm::vec3(0));
-            trackLine->bind();
+            trackLine0->genLine(medPos.pos, glm::vec3(0));
 
             // tracking object
             obj->setPosition(medPos.pos);
@@ -183,8 +185,52 @@ int main(int argc, char *args[]) {
             // Pull out a formatted uint32 image
             auto pixels = img.getFormattedImg();
 
+			// Principal component analysis
+			if (pc.cloud.size() > 100) {
+				glm::mat3 m = pc.calcCov();
+				
+				DWORD nul;
+				FillConsoleOutputCharacter(hCon, ' ', screenChars, { 0, 0 }, &nul);
+				SetConsoleCursorPosition(hCon, { 0, 0 });
+				std::cout << "Covariance\n" << m << std::endl;
+
+				Eigen::Matrix3f mat = Eigen::Map<Eigen::Matrix3f>(glm::value_ptr(m));
+				Eigen::EigenSolver<Eigen::Matrix3f> solver(mat);
+				Eigen::Vector3f eigenVals = solver.eigenvalues().real();
+				Eigen::Matrix3f eigenVecs = solver.eigenvectors().real();
+				//eigenVecs.normalize();
+
+				glm::mat3 c = m;
+				memcpy(glm::value_ptr(m), eigenVecs.data(), sizeof(glm::mat3));
+
+				std::cout << "Eigenvalues\n" << eigenVals << std::endl;
+				std::cout << "Eigenvectors\n" << m << std::endl;
+
+				auto pos = pc.meanPosition();
+				float e = 0.0f;
+				int ind = 0;
+				for (int i = 0; i < 3; i++) {
+					float newE = eigenVals[i];
+					if (fabs(newE) > fabs(e)) {
+						e = newE;
+						ind = i;
+					}
+				}
+
+				std::cout << "Test" << std::endl;
+				std::cout << glm::inverse(m)*c*m << std::endl;
+
+				trackLine0->genLine(pos, pos + glm::column(m, 0));
+				trackLine1->genLine(pos, pos + glm::column(m, 1));
+				trackLine2->genLine(pos, pos + glm::column(m, 2));
+			}
+
+			//auto invMeanPos = glm::translate(glm::mat4(), -pc.meanPosition());
+			//frangibleCloud->applyTransform(invMeanPos);
+			//frangibleCloud->applyTransform(glm::transpose(m));
+
+
             // Display
-			dispWindow.activate();
 			surf->shaders.use();
 			normalTex.setImage(pixels.get());
             dispWindow.render();

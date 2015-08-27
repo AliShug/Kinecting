@@ -42,10 +42,15 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/simd_vec4.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/io.hpp>
 
 #include <FreeImage.h>
+
+#include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 
 // OpenCV
 //#include <opencv2/core/core.hpp>

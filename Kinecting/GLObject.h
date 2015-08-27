@@ -79,6 +79,7 @@ public:
 
 	// Applies a transformation to the object's vertices (direct modification)
 	void applyTransform(const glm::mat4 &mat);
+	void applyTransform(const glm::mat3 &mat);
 
     // Shader manager
     ShaderManager shaders;

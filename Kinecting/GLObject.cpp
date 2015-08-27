@@ -242,7 +242,8 @@ void GLObject::bind() {
 }
 
 void GLObject::render(const glm::mat4 &vpMat) {
-    if (!_bound || _hidden) return;
+    if (_hidden) return;
+	if (!_bound) bind();
 
     // Switch to our shaders & mesh VAO
     shaders.use();
@@ -280,6 +281,14 @@ void GLObject::applyTransform(const glm::mat4 &mat) {
 		glm::vec4 pos4(vert.pos, 1.0f);
 		pos4 = mat * pos4;
 		vert.pos = pos4.xyz;
+	}
+
+	bind();
+}
+
+void GLObject::applyTransform(const glm::mat3 &mat) {
+	for (auto &vert : _mesh.vertices) {
+		vert.pos = mat * vert.pos;
 	}
 
 	bind();

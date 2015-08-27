@@ -24,6 +24,9 @@ public:
     position_t meanPosition();
     point_t medianPoint();
 
+	// Covariance
+	glm::mat3 calcCov();
+
 	// Internal cloud
     cloud_t cloud;
 };
