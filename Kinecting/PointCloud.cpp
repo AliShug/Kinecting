@@ -1,8 +1,9 @@
 #include "stdafx.h"
 #include "PointCloud.h"
 
-PointCloud::PointCloud(NormDepthImage &source, float camXZ, float camYZ) {
+void PointCloud::generateFromImage(NormDepthImage &source, float camXZ, float camYZ) {
     // Maketh space
+	cloud.clear();
     cloud.reserve(source.dim.area());
 
     // Calculate each selected pixel's camera-space position
@@ -77,4 +78,32 @@ glm::mat3 PointCloud::calcCov() {
 	cov *= 1.0f / (cloud.size() - 1);
 
 	return cov;
+}
+
+void PointCloud::loadFromFile(const std::string &file) {
+	throw "Load pointcloud-file not implemented";
+
+	std::ifstream fileIn;
+	fileIn.open(file);
+
+	while (fileIn.good()) {
+		point_t pt;
+		//fileIn >> "n";
+		// TODO
+	}
+
+	fileIn.close();
+}
+
+void PointCloud::saveToFile(const std::string &file) {
+	std::ofstream fileOut;
+	fileOut.open(file, std::ofstream::trunc);
+
+	for (auto pt : cloud) {
+		fileOut << std::hexfloat << "n " << pt.norm.x << " " << pt.norm.y << " " << pt.norm.z << std::endl;
+		fileOut << std::hexfloat << "p " << pt.pos.x << " " << pt.pos.y << " " << pt.pos.z << std::endl;
+		fileOut << std::hexfloat << "s " << pt.screen.x << " " << pt.screen.y << " " << std::endl;
+	}
+
+	fileOut.close();
 }

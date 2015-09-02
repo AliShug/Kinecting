@@ -22,8 +22,7 @@
     <ProjectGuid>{5278C442-F742-4508-B940-2A43534686EB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Kinecting</RootNamespace>
-    <WindowsTargetPlatformVersion>
-    </WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

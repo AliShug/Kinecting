@@ -166,10 +166,9 @@ void GLObject::genPointCloud(const PointCloud &pc) {
 	_mesh.vertices.clear();
 	_mesh.indices.clear();
 
-	glm::vec3 col(1, 0, 1);
 	for (int i = 0; i < pc.cloud.size(); i++) {
 		auto pt = pc.cloud[i];
-		_mesh.vertices.push_back({ pt.pos, {0, 0, 0}, col, {0, 0} });
+		_mesh.vertices.push_back({ pt.pos, {0, 0, 0}, pt.col, {0, 0} });
 		_mesh.indices.push_back(i);
 	}
 

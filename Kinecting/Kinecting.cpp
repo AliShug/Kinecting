@@ -36,6 +36,8 @@ int main(int argc, char *args[]) {
     KinectDevice kinect;
     GLWindow dispWindow;
 
+	bool paused = false;
+
     // Data for testing (load from png)
     //auto testData = getTestPng("normalTestImg");
 
@@ -52,6 +54,9 @@ int main(int argc, char *args[]) {
 		auto &scene = dispWindow.scene;
 		scene.setCamera(fullSize, kinect.depthFrameInfo.yFov);
 		std::cout << scene.camera.fov.x;
+
+		const float camXZ = tanf((70.6f * M_PI / 180.0f) / 2.0f);
+		const float camYZ = tanf((60.0f * M_PI / 180.0f) / 2.0f);
 
 		// Storage for raw camera output
 		auto rawData = std::unique_ptr<uint16_t>(new uint16_t[fullSize.area()]);
@@ -86,6 +91,7 @@ int main(int argc, char *args[]) {
 		trackLine2->renderMode = GLObject::RenderMode::LINE_STRIP;
 
 		// Tracked cloud
+		PointCloud pointCloud;
 		auto frangibleCloud = scene.newObject("solidcolor.glsl", "object_vert.glsl");
 		frangibleCloud->renderMode = GLObject::RenderMode::POINTS;
 		frangibleCloud->pointSize = 3.0f;
@@ -114,6 +120,13 @@ int main(int argc, char *args[]) {
                     if (e.key.keysym.scancode == SDL_SCANCODE_R) {
                         trackPt = centre;
                     }
+					else if (e.key.keysym.scancode == SDL_SCANCODE_P) {
+						paused = !paused;
+					}
+					else if (e.key.keysym.scancode == SDL_SCANCODE_S) {
+						pointCloud.saveToFile("cloud.txt");
+						std::cout << "Saved pointcloud to 'cloud.txt'" << std::endl;
+					}
                 }
 
                 if (e.type == SDL_QUIT || (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE)) {
@@ -127,48 +140,52 @@ int main(int argc, char *args[]) {
 				std::lock_guard<decltype(kinect.frameLock)> lck(kinect.frameLock);
                 memcpy(rawData.get(), kinect.depthData.get(), fullSize.area()*sizeof(uint16_t));
             }
-                
-            // Convert depth to float-32 (and mm to m)
-            const int count = frame_w * frame_h;
-            auto fd = floatData.get();
-            auto rd = rawData.get();
-
-            for (int i = 0; i < count; i++) {
-                fd[i] = float(rd[i]) / 1.0f;
-            }
-
-            // Pass to image processor and gui
-            img.setDepth(floatData.get());
-
-			dispWindow.activate();
-			surf->shaders.use();
-			depthTex.setImage(floatData.get());
             
-            // **************************************************
-            // *** Image Processing
+			if (!paused) {
+				// Convert depth to float-32 (and mm to m)
+				const int count = frame_w * frame_h;
+				auto fd = floatData.get();
+				auto rd = rawData.get();
 
-            // Smooth depth
-            //img.threshold_meanDepthBlur(4, 0.001f);
+				for (int i = 0; i < count; i++) {
+					fd[i] = float(rd[i]) / 1.0f;
+				}
 
-            // Calculate normals
-            const float camXZ = tanf((70.6f * M_PI / 180.0f) / 2.0f);
-            const float camYZ = tanf((60.0f * M_PI / 180.0f) / 2.0f);
-            img.calcNormals(camXZ, camYZ);
+				// Pass to image processor and gui
+				img.setDepth(floatData.get());
 
-            // Blur preprocess
-            img.OPT_threshold_gaussNormalBlur(12, 0.8f, 0.01f);
-            //img.threshold_meanNormalBlur(4, 0.28f);
+				dispWindow.activate();
+				surf->shaders.use();
+				depthTex.setImage(floatData.get());
 
-            // Flood-fill
-            img.threshold_normalFlood(trackPt, 0.1f, 0.01f);
+				// **************************************************
+				// *** Image Processing
+
+				// Smooth depth
+				//img.threshold_meanDepthBlur(4, 0.001f);
+
+				// Calculate normals
+				img.calcNormals(camXZ, camYZ);
+
+				// Blur preprocess
+				img.OPT_threshold_gaussNormalBlur(12, 0.8f, 0.01f);
+				//img.threshold_meanNormalBlur(4, 0.28f);
+
+				// Flood-fill
+				img.threshold_normalFlood(trackPt, 0.1f, 0.01f);
+			}
+
+
+			// **************************************************
+			// *** Point Cloud
 
             // Now we can generate a point-cloud
-            PointCloud pc(img, camXZ, camYZ);
+            pointCloud.generateFromImage(img, camXZ, camYZ);
             // Display it
-			frangibleCloud->genPointCloud(pc);
+			frangibleCloud->genPointCloud(pointCloud);
 
             // re-track
-            auto medPos = pc.medianPoint();
+            auto medPos = pointCloud.medianPoint();
             trackPt.x = int(medPos.screen.x); trackPt.y = int(medPos.screen.y);
 
 			// center the frangible cloud
@@ -186,8 +203,8 @@ int main(int argc, char *args[]) {
             auto pixels = img.getFormattedImg();
 
 			// Principal component analysis
-			if (pc.cloud.size() > 100) {
-				glm::mat3 m = pc.calcCov();
+			if (pointCloud.cloud.size() > 100) {
+				glm::mat3 m = pointCloud.calcCov();
 				
 				DWORD nul;
 				FillConsoleOutputCharacter(hCon, ' ', screenChars, { 0, 0 }, &nul);
@@ -206,7 +223,7 @@ int main(int argc, char *args[]) {
 				std::cout << "Eigenvalues\n" << eigenVals << std::endl;
 				std::cout << "Eigenvectors\n" << m << std::endl;
 
-				auto pos = pc.meanPosition();
+				auto pos = pointCloud.meanPosition();
 				float e = 0.0f;
 				int ind = 0;
 				for (int i = 0; i < 3; i++) {
@@ -217,17 +234,15 @@ int main(int argc, char *args[]) {
 					}
 				}
 
-				std::cout << "Test" << std::endl;
-				std::cout << glm::inverse(m)*c*m << std::endl;
+				trackLine0->genLine(pos - glm::column(m, 0), pos + glm::column(m, 0));
+				trackLine1->genLine(pos - glm::column(m, 1), pos + glm::column(m, 1));
+				trackLine2->genLine(pos - glm::column(m, 2), pos + glm::column(m, 2));
 
-				trackLine0->genLine(pos, pos + glm::column(m, 0));
-				trackLine1->genLine(pos, pos + glm::column(m, 1));
-				trackLine2->genLine(pos, pos + glm::column(m, 2));
+				// Transform frangible cloud into calculated local space
+				auto invMeanPos = glm::translate(glm::mat4(), -pointCloud.meanPosition());
+				frangibleCloud->applyTransform(invMeanPos);
+				frangibleCloud->applyTransform(glm::inverse(m));
 			}
-
-			//auto invMeanPos = glm::translate(glm::mat4(), -pc.meanPosition());
-			//frangibleCloud->applyTransform(invMeanPos);
-			//frangibleCloud->applyTransform(glm::transpose(m));
 
 
             // Display
