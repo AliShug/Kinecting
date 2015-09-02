@@ -35,3 +35,12 @@ T* aligned_malloc(std::size_t size, std::size_t alignment) {
 	return static_cast<T*>(_aligned_malloc(size * sizeof(T), alignment));
 #endif
 }
+
+namespace Colors {
+    const auto red = glm::vec3(1, 0, 0);
+    const auto green = glm::vec3(0, 1, 0);
+    const auto blue = glm::vec3(0, 0, 1);
+    const auto yellow = glm::vec3(1, 1, 0);
+    const auto black = glm::vec3(0);
+    const auto white = glm::vec3(1);
+}

@@ -27,6 +27,12 @@ auto getTestPng(std::string file) {
     return testData;
 }
 
+void instructions(std::ostream &out) {
+    out << "WS - Camera dolly | AD - Camera Strafe | QE - Camera Elevation\n";
+    out << "Click/drag - Camera Look\n";
+    out << "P - Pause\nR - Reset tracking\nO - Open pointcloud\nReturn - Save pointcloud\n\n";
+}
+
 int main(int argc, char *args[]) {
 	HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
 	CONSOLE_SCREEN_BUFFER_INFO conInfo;
@@ -40,6 +46,9 @@ int main(int argc, char *args[]) {
 
     // Data for testing (load from png)
     //auto testData = getTestPng("normalTestImg");
+
+    // Buffered output
+    std::stringstream log;
 
     try {
         // Initialize the gui and kinect
@@ -95,6 +104,9 @@ int main(int argc, char *args[]) {
 		auto frangibleCloud = scene.newObject("solidcolor.glsl", "object_vert.glsl");
 		frangibleCloud->renderMode = GLObject::RenderMode::POINTS;
 		frangibleCloud->pointSize = 3.0f;
+        auto baseCloud = scene.newObject("solidcolor.glsl", "object_vert.glsl");
+        baseCloud->renderMode = GLObject::RenderMode::POINTS;
+        baseCloud->pointSize = 2.0f;
 
         // Current tracking point
         Pt2i centre = { fullSize.width / 2, fullSize.height / 2 };
@@ -123,10 +135,14 @@ int main(int argc, char *args[]) {
 					else if (e.key.keysym.scancode == SDL_SCANCODE_P) {
 						paused = !paused;
 					}
-					else if (e.key.keysym.scancode == SDL_SCANCODE_S) {
+					else if (e.key.keysym.scancode == SDL_SCANCODE_RETURN) {
 						pointCloud.saveToFile("cloud.txt");
 						std::cout << "Saved pointcloud to 'cloud.txt'" << std::endl;
 					}
+                    else if (e.key.keysym.scancode == SDL_SCANCODE_O) {
+                        pointCloud.loadFromFile("cloud.txt");
+                        paused = true;
+                    }
                 }
 
                 if (e.type == SDL_QUIT || (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE)) {
@@ -183,14 +199,11 @@ int main(int argc, char *args[]) {
             pointCloud.generateFromImage(img, camXZ, camYZ);
             // Display it
 			frangibleCloud->genPointCloud(pointCloud);
+            baseCloud->genPointCloud({ 1, 0, 0 }, pointCloud);
 
             // re-track
             auto medPos = pointCloud.medianPoint();
             trackPt.x = int(medPos.screen.x); trackPt.y = int(medPos.screen.y);
-
-			// center the frangible cloud
-			auto invPos = glm::translate(glm::mat4(), -medPos.pos);
-			//frangibleCloud->applyTransform(invPos);
 
             // tracking line
             trackLine0->genLine(medPos.pos, glm::vec3(0));
@@ -198,50 +211,95 @@ int main(int argc, char *args[]) {
             // tracking object
             obj->setPosition(medPos.pos);
 
-
             // Pull out a formatted uint32 image
             auto pixels = img.getFormattedImg();
 
 			// Principal component analysis
 			if (pointCloud.cloud.size() > 100) {
-				glm::mat3 m = pointCloud.calcCov();
-				
-				DWORD nul;
-				FillConsoleOutputCharacter(hCon, ' ', screenChars, { 0, 0 }, &nul);
-				SetConsoleCursorPosition(hCon, { 0, 0 });
-				std::cout << "Covariance\n" << m << std::endl;
+                // Convenience
+                using namespace glm;
 
-				Eigen::Matrix3f mat = Eigen::Map<Eigen::Matrix3f>(glm::value_ptr(m));
+				// Set up for logging
+                if (!paused) {
+                    DWORD nul;
+                    FillConsoleOutputCharacter(hCon, ' ', screenChars, { 0, 0 }, &nul);
+                }
+				SetConsoleCursorPosition(hCon, { 0, 0 });
+
+                instructions(log);
+                log << (paused ? "--PAUSED--" : "--RUNNING--") << std::endl;
+
+                // Linear algebra - let the library deal with the tricky stuff
+				mat3 cov = pointCloud.calcCov();
+				Eigen::Matrix3f mat = Eigen::Map<Eigen::Matrix3f>(value_ptr(cov));
 				Eigen::EigenSolver<Eigen::Matrix3f> solver(mat);
 				Eigen::Vector3f eigenVals = solver.eigenvalues().real();
 				Eigen::Matrix3f eigenVecs = solver.eigenvectors().real();
-				//eigenVecs.normalize();
 
-				glm::mat3 c = m;
-				memcpy(glm::value_ptr(m), eigenVecs.data(), sizeof(glm::mat3));
+                // Matrix containing eigenvectors in COLUMNS
+                mat3 eigM;
+                memcpy(value_ptr(eigM), eigenVecs.data(), sizeof(mat3));
 
-				std::cout << "Eigenvalues\n" << eigenVals << std::endl;
-				std::cout << "Eigenvectors\n" << m << std::endl;
+                // Sort on eigenvalues (quick bubble-sort)
+                float x = 0.0f, y = 0.0f, z = 0.0f;
+                int xI = 0, yI = 0, zI = 0;
+                for (int i = 0; i < 3; i++) {
+                    float e = eigenVals[i];
+                    if (e > x) {
+                        // shuffle down
+                        z = y;
+                        zI = yI;
+                        y = x;
+                        yI = xI;
+                        x = e;
+                        xI = i;
+                    }
+                    else if (e > y) {
+                        z = y;
+                        zI = yI;
+                        y = e;
+                        yI = i;
+                    }
+                    else {
+                        z = e;
+                        zI = i;
+                    }
+                }
 
-				auto pos = pointCloud.meanPosition();
-				float e = 0.0f;
-				int ind = 0;
-				for (int i = 0; i < 3; i++) {
-					float newE = eigenVals[i];
-					if (fabs(newE) > fabs(e)) {
-						e = newE;
-						ind = i;
-					}
-				}
+                log << std::setprecision(2);
+                log << "Eigenvalues        " << eigenVals[0] << "\t" << eigenVals[1] << "\t" << eigenVals[2] << std::endl;
+                log << "Sorted eigenvalues " << x << "\t" << y << "\t" << z << std::endl;
 
-				trackLine0->genLine(pos - glm::column(m, 0), pos + glm::column(m, 0));
-				trackLine1->genLine(pos - glm::column(m, 1), pos + glm::column(m, 1));
-				trackLine2->genLine(pos - glm::column(m, 2), pos + glm::column(m, 2));
+                // Ordered eigenvectors
+                mat3 sortedEig;
+                sortedEig[0] = eigM[xI];
+                sortedEig[1] = eigM[yI];
+                sortedEig[2] = eigM[zI];
+                static mat3 prevEig = sortedEig;
+
+                // Stabilization - match up the dot-sign
+                for (int i = 0; i < 3; i++) {
+                    sortedEig[i] *= (dot(sortedEig[i], prevEig[i]) < 0) ? -1 : 1;
+                }
+                prevEig = sortedEig;
+
+                log << "Eigenvectors: columnwise - unsorted - unstabilized --" << eigM << std::endl;
+                log << "Eigenvectors: columnwise - sorted   - stabilized   --" << sortedEig << std::endl;
+
+                // Visualise PCA transform
+                vec3 pos = pointCloud.meanPosition();
+                trackLine0->genLine(pos, pos + sortedEig[0], Colors::red);
+                trackLine1->genLine(pos, pos + sortedEig[1], Colors::green);
+                trackLine2->genLine(pos, pos + sortedEig[2], Colors::blue);
 
 				// Transform frangible cloud into calculated local space
-				auto invMeanPos = glm::translate(glm::mat4(), -pointCloud.meanPosition());
+				auto invMeanPos = translate(mat4(), -pointCloud.meanPosition());
 				frangibleCloud->applyTransform(invMeanPos);
-				frangibleCloud->applyTransform(glm::inverse(m));
+				frangibleCloud->applyTransform(inverse(sortedEig));
+
+                // Flush output
+                std::cout << log.str();
+                log.str("");
 			}
 
 

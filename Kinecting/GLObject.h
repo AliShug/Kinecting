@@ -54,8 +54,9 @@ public:
     // Object generation functions
 	void genQuad(const Dim &size);
     void genCuboid(float length = 1, float width = 1, float height = 1);
-    void genLine(const glm::vec3 &start, const glm::vec3 &end);
+    void genLine(const glm::vec3 &start, const glm::vec3 &end, const color_t &col = color_t());
 	void genPointCloud(const PointCloud &pc);
+    void genPointCloud(const color_t &col, const PointCloud &pc);
 
     // Binds the object using the current context
     void bind();

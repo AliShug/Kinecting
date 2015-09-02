@@ -151,8 +151,7 @@ void GLObject::genCuboid(float length, float width, float height) {
     _bound = false;
 }
 
-void GLObject::genLine(const glm::vec3 &start, const glm::vec3 &end) {
-    glm::vec3 col(0, 0, 0);
+void GLObject::genLine(const glm::vec3 &start, const glm::vec3 &end, const color_t &col) {
     _mesh.vertices = {
         { start, { 0, 0, 0 }, col, { 0, 0 } },
         { end, {0, 0, 0}, col, {0, 0} }
@@ -173,6 +172,19 @@ void GLObject::genPointCloud(const PointCloud &pc) {
 	}
 
 	_bound = false;
+}
+
+void GLObject::genPointCloud(const color_t &col, const PointCloud &pc) {
+    _mesh.vertices.clear();
+    _mesh.indices.clear();
+
+    for (int i = 0; i < pc.cloud.size(); i++) {
+        auto pt = pc.cloud[i];
+        _mesh.vertices.push_back({ pt.pos, { 0, 0, 0 }, col, { 0, 0 } });
+        _mesh.indices.push_back(i);
+    }
+
+    _bound = false;
 }
 
 void GLObject::bind() {
