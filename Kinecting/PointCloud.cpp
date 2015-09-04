@@ -63,6 +63,8 @@ void PointCloud::generateFromImage(NormDepthImage &source, float camXZ, float ca
 }
 
 void PointCloud::innerEdge() {
+    if (cloud.size() < 100) return;
+
     for (unsigned int i = 0; i < cloud.size(); i++) {
         auto &pt = cloud[i];
 

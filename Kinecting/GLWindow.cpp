@@ -45,7 +45,7 @@ void GLWindow::showWindow(std::string name, Dim &size) {
     glGetError();
 
 	// GL settings
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glDisable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	SDL_GL_SetSwapInterval(0);

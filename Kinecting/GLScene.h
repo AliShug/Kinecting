@@ -19,7 +19,7 @@ public:
 		float lookSpeed = 0.02f;
 
 		glm::mat4 calcProjection() {
-			return glm::perspective(fov.y/2, aspect, 0.01f, 1000.0f);
+			return glm::perspectiveFov(fov.y * float(M_PI/180), float(dim.width), float(dim.height), 0.01f, 1000.0f);
 		}
 
 		glm::mat4 calcView();
@@ -35,7 +35,7 @@ public:
 	// Setup camera using specified dimensions
 	void setCamera(Dim &viewPort, float yFov) {
 		camera.fov.y = yFov;
-		camera.eye = { 0, 0, -2 };
+		camera.eye = { 0, 0, 0 };
 
         setCameraDim(viewPort);
 	}
@@ -43,6 +43,11 @@ public:
     void setCameraDim(Dim &viewPort) {
         camera.dim = viewPort;
         camera.aspect = float(viewPort.width) / float(viewPort.height);
+        camera.fov.x = camera.fov.y * camera.aspect;
+    }
+
+    void setCameraFov(float yFov) {
+        camera.fov.y = yFov;
         camera.fov.x = camera.fov.y * camera.aspect;
     }
 

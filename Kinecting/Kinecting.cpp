@@ -52,6 +52,11 @@ int main(int argc, char *args[]) {
     // Buffered output
     stringstream log;
 
+    // Projector stats
+    const float projectorFovY = 27.5f;
+    const float projectorFovX = 48.9f;
+    const Dim projectorDim = { 845, 480 };
+
     try {
         // Initialize the gui and kinect
         GLWindow::InitGUI();
@@ -62,10 +67,14 @@ int main(int argc, char *args[]) {
 
         Dim fullSize = { frame_w, frame_h };
         Dim window = { 1280, 720 };
+        Dim projectorViewport = window;
+        projectorViewport.height *= 2;
+
         dispWindow.showWindow("Kinecting", window);
 
+        float fov = projectorFovY * 2;
 		auto &scene = dispWindow.scene;
-		scene.setCamera(window, 60.0f/*kinect.depthFrameInfo.yFov*/);
+		scene.setCamera(projectorViewport, fov);
 		cout << scene.camera.fov.x << "," << scene.camera.fov.y << endl;
 
 		// Storage for raw camera output
@@ -80,6 +89,7 @@ int main(int argc, char *args[]) {
 		auto surf = scene.newObject("rgb_frag.glsl", "normal_vertex.glsl");
 		surf->renderMode = GLObject::RenderMode::POINTS;
 		surf->genQuad(fullSize);
+        surf->pointSize = 3.0f;
 		
 		Texture normalTex, depthTex;
 		normalTex.init(Texture::BGR, fullSize);
@@ -91,6 +101,7 @@ int main(int argc, char *args[]) {
 		// Cube (test)
 		auto obj = scene.newObject("object_frag.glsl", "object_vert.glsl");
 		obj->genCuboid(0.1f, 0.1f, 0.1f);
+        obj->hide();
 
         // Tracking line
         auto trackLine0 = scene.newObject("solidcolor.glsl", "object_vert.glsl");
@@ -115,7 +126,7 @@ int main(int argc, char *args[]) {
 
 		// TEMP
 		// hide surface
-		surf->hide();
+		//surf->hide();
 
 
         // Begin reading in frames...
@@ -128,11 +139,13 @@ int main(int argc, char *args[]) {
                 // Handle all waiting events
                 dispWindow.handleEvent(e);
 
-                // Tracking reset
                 if (e.type == SDL_KEYDOWN) {
+                    // Tracking reset
                     if (e.key.keysym.scancode == SDL_SCANCODE_R) {
                         trackPt = centre;
                     }
+
+                    // Controls
 					else if (e.key.keysym.scancode == SDL_SCANCODE_P) {
 						paused = !paused;
 					}
@@ -144,8 +157,20 @@ int main(int argc, char *args[]) {
                         pointCloud.loadFromFile("cloud.txt");
                         paused = true;
                     }
+
+                    // Fullscreen
                     else if (e.key.keysym.scancode == SDL_SCANCODE_F11) {
                         dispWindow.toggleFullscreen();
+                    }
+
+                    // Zoom lens
+                    else if (e.key.keysym.scancode == SDL_SCANCODE_KP_PLUS) {
+                        fov -= 1.0f;
+                        scene.setCameraFov(fov);
+                    }
+                    else if (e.key.keysym.scancode == SDL_SCANCODE_KP_MINUS) {
+                        fov += 1.0f;
+                        scene.setCameraFov(fov);
                     }
                 }
 
@@ -156,8 +181,11 @@ int main(int argc, char *args[]) {
                 // Resize
                 if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
                     window = { e.window.data1, e.window.data2 };
-                    glViewport(0, 0, window.width, window.height);
-                    scene.setCameraDim(window);
+                    projectorViewport = window;
+                    projectorViewport.height *= 2;
+
+                    glViewport(0, -window.height, projectorViewport.width, projectorViewport.height);
+                    scene.setCameraDim(projectorViewport);
                 }
             }
 
@@ -208,10 +236,10 @@ int main(int argc, char *args[]) {
 
             // Now we can generate a point-cloud
             pointCloud.generateFromImage(img, kinectXZ, kinectYZ);
-            pointCloud.innerEdge();
+            //pointCloud.innerEdge();
             // Display it
 			frangibleCloud->genPointCloud(pointCloud);
-            baseCloud->genPointCloud({ 1, 0, 0 }, pointCloud);
+            baseCloud->genPointCloud(Colors::orange, pointCloud);
 
             // re-track
             auto medPos = pointCloud.medianPoint();
