@@ -62,6 +62,9 @@ public:
     void capture(const std::string &file);
     void getFrame(uint32_t **buff, int *size);
 
+    void setFullscreen(bool fs);
+    void toggleFullscreen();
+
 	// Activates the window's rendering context
 	void activate() {
 		SDL_GL_MakeCurrent(_window, _context);
@@ -77,7 +80,7 @@ protected:
     SDL_Window *_window = nullptr;
     SDL_GLContext _context = nullptr;
 
-    bool _fullscreen;
+    bool _fullscreen = false;
     std::string _windowName;
 };
 

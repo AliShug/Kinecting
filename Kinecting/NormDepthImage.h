@@ -124,9 +124,9 @@ protected:
     inline uint32_t formatPixel(store_t &pix) {
         uint32_t r, g, b;
 		auto castPix = glm::vec4_cast(pix);
-        r = (castPix.x + 1) * 127.5f;
-        g = (castPix.y + 1) * 127.5f;
-        b = (castPix.z * 255);
+        r = uint32_t((castPix.x + 1) * 127.5f);
+        g = uint32_t((castPix.y + 1) * 127.5f);
+        b = uint32_t((castPix.z * 255));
         return 0xFF000000 | r << 16 | g << 8 | b;
     }
 

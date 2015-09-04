@@ -4,7 +4,12 @@
 void PointCloud::generateFromImage(NormDepthImage &source, float camXZ, float camYZ) {
     // Maketh space
 	cloud.clear();
+    cloud_indices.clear();
+
     cloud.reserve(source.dim.area());
+    cloud_indices.reserve(source.dim.area());
+
+    _source_dim = source.dim;
 
     // Calculate each selected pixel's camera-space position
     Pt2i pt;
@@ -15,14 +20,64 @@ void PointCloud::generateFromImage(NormDepthImage &source, float camXZ, float ca
                 newPoint.pos.z = source.getDepth(pt);
 
 				if (newPoint.pos.z > 0.5f && newPoint.pos.z < 4.5f) {
-					newPoint.screen.x = pt.x;
+					// Transform to camera space
+                    newPoint.screen.x = pt.x;
 					newPoint.screen.y = pt.y;
 					newPoint.pos.x = (float(pt.x) / float(source.dim.width) - 0.5f) * 2 * newPoint.pos.z * camXZ;
 					newPoint.pos.y = ((1.0f - float(pt.y) / float(source.dim.height)) - 0.5f) * 2 * newPoint.pos.z * camYZ;
 
-					cloud.push_back(newPoint);
+                    // Adjacency information
+                    int ajCount = 0;
+                    if (source.getMask(pt.offs(-1, 0)) == NormDepthImage::PICKED) {
+                        newPoint.adj |= AJ_LEFT;
+                        ajCount++;
+                    }
+                    if (source.getMask(pt.offs( 1, 0)) == NormDepthImage::PICKED) {
+                        newPoint.adj |= AJ_RIGHT; 
+                        ajCount++;
+                    }
+                    if (source.getMask(pt.offs(0, -1)) == NormDepthImage::PICKED) {
+                        newPoint.adj |= AJ_UP; 
+                        ajCount++;
+                    }
+                    if (source.getMask(pt.offs(0,  1)) == NormDepthImage::PICKED) {
+                        newPoint.adj |= AJ_DOWN;  
+                        ajCount++;
+                    }
+
+                    if (ajCount > 1) {
+                        // Colour the edge points
+                        if (newPoint.adj != AJ_ALL) newPoint.col = Colors::black;
+                        cloud_indices.push_back(cloud.size());
+                        cloud.push_back(newPoint);
+
+                        continue; // skip to next point
+                    }
 				}
             }
+
+            // No index for unused points (pixels)
+            cloud_indices.push_back(-1);
+        }
+    }
+}
+
+void PointCloud::innerEdge() {
+    for (unsigned int i = 0; i < cloud.size(); i++) {
+        auto &pt = cloud[i];
+
+        Pt2i sPt = pt.screen;
+        Pt2i l, r, u, d;
+        l = sPt.offs(-1,  0);
+        r = sPt.offs( 1,  0);
+        u = sPt.offs( 0, -1);
+        d = sPt.offs( 0,  1);
+
+        if (pt.adj & AJ_LEFT && cloud[cloud_indices[l.y*_source_dim.width + l.x]].adj != AJ_ALL ||
+            pt.adj & AJ_RIGHT && cloud[cloud_indices[r.y*_source_dim.width + r.x]].adj != AJ_ALL ||
+            pt.adj & AJ_UP && cloud[cloud_indices[u.y*_source_dim.width + u.x]].adj != AJ_ALL ||
+            pt.adj & AJ_DOWN && cloud[cloud_indices[d.y*_source_dim.width + d.x]].adj != AJ_ALL) {
+            pt.col = Colors::orange;
         }
     }
 }

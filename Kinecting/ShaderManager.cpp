@@ -31,7 +31,7 @@ void ShaderManager::compileShaders() {
 }
 
 ShaderManager::ParamRef ShaderManager::namedParam(const std::string &name) {
-    for (int i = 0; i < parameters.size(); i++) {
+    for (unsigned int i = 0; i < parameters.size(); i++) {
         if (parameters[i].name == name) return parameters[i].ref;
     }
 

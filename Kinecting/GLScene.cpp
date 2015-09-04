@@ -3,29 +3,36 @@
 
 
 void GLScene::Camera::handleInput(const SDL_Event &e) {
-	switch (e.type) {
+    float mod;
+    if (e.key.keysym.mod & KMOD_SHIFT) {
+        mod = 0.1f;
+    }
+    else {
+        mod = 1.0f;
+    }
 
+	switch (e.type) {
 	case SDL_KEYDOWN:
 		//case SDL_KEYUP:
 		switch (e.key.keysym.scancode) {
 		case SDL_SCANCODE_W:
-			eye += moveSpeed*dir;
+			eye += moveSpeed*mod*dir;
 			break;
 		case SDL_SCANCODE_A:
-			eye -= moveSpeed*side;
+			eye -= moveSpeed*mod*side;
 			break;
 		case SDL_SCANCODE_S:
-			eye -= moveSpeed*dir;
+			eye -= moveSpeed*mod*dir;
 			break;
 		case SDL_SCANCODE_D:
-			eye += moveSpeed*side;
+			eye += moveSpeed*mod*side;
 			break;
 
 		case SDL_SCANCODE_Q:
-			eye -= moveSpeed*up;
+			eye -= moveSpeed*mod*up;
 			break;
 		case SDL_SCANCODE_E:
-			eye += moveSpeed*up;
+			eye += moveSpeed*mod*up;
 			break;
 		}
 		break;
@@ -34,8 +41,8 @@ void GLScene::Camera::handleInput(const SDL_Event &e) {
 		// Check the left button is depressed
 		if (e.motion.state == SDL_BUTTON(1)) {
 			glm::vec2 delta;
-			delta.x = e.motion.xrel;
-			delta.y = e.motion.yrel;
+			delta.x = float(e.motion.xrel);
+			delta.y = float(e.motion.yrel);
 			angle += delta*lookSpeed;
 		}
 		break;

@@ -9,8 +9,8 @@ out float keep;
 uniform sampler2D UInputDepth;
 
 uniform mat4 MatMVP;
-uniform float camXZFactor;
-uniform float camYZFactor;
+uniform float kinectXZFactor;
+uniform float kinectYZFactor;
 
 void main() {
     //vec2 _uv = uv / 2;
@@ -19,7 +19,7 @@ void main() {
 
     // Calculate camera-space position of vertex (fragment)
     vec3 newPos = pos;
-    vec2 factor = vec2(camXZFactor, camYZFactor);
+    vec2 factor = vec2(kinectXZFactor, kinectYZFactor);
     newPos.z = texture(UInputDepth, uv).r / 1000.0f;
     newPos.xy *= newPos.z * factor;
 

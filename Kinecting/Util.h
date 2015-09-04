@@ -41,6 +41,10 @@ namespace Colors {
     const auto green = glm::vec3(0, 1, 0);
     const auto blue = glm::vec3(0, 0, 1);
     const auto yellow = glm::vec3(1, 1, 0);
+    const auto orange = glm::vec3(1, 0.5, 0);
     const auto black = glm::vec3(0);
     const auto white = glm::vec3(1);
 }
+
+const float kinectXZ = tanf((70.6f * M_PI / 180.0f) / 2.0f);
+const float kinectYZ = tanf((60.0f * M_PI / 180.0f) / 2.0f);

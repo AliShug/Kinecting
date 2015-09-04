@@ -271,6 +271,11 @@ void GLObject::render(const glm::mat4 &vpMat) {
 	if (xz.valid()) xz.bindFloat(tanf((_scene->camera.fov.x * M_PI / 180.0f) / 2.0f));
 	if (yz.valid()) yz.bindFloat(tanf((_scene->camera.fov.y * M_PI / 180.0f) / 2.0f));
 
+    xz = shaders.namedParam("kinectXZFactor");
+    yz = shaders.namedParam("kinectYZFactor");
+    if (xz.valid()) xz.bindFloat(kinectXZ);
+    if (yz.valid()) yz.bindFloat(kinectYZ);
+
 	// Pump in the transformation matrix
 	auto mvpRef = shaders.namedParam("MatMVP");
 	if (mvpRef.valid()) {

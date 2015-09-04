@@ -5,7 +5,7 @@
 class PointCloud {
 public:
     typedef glm::vec3 position_t;
-    typedef glm::vec2 screenpos_t;
+    typedef Pt2i screenpos_t;
     typedef glm::vec3 normal_t;
 	typedef glm::vec3 color_t;
 
@@ -14,12 +14,24 @@ public:
         position_t pos;
         normal_t norm;
 		color_t col = color_t(0.5f, 0.5f, 1.0f);
+        char adj = AJ_NONE;
+    };
+
+    enum adjacency {
+        AJ_NONE = 0,
+        AJ_LEFT = 1,
+        AJ_RIGHT = 2,
+        AJ_UP = 4,
+        AJ_DOWN = 8,
+        AJ_ALL = 0xF
     };
 
 	typedef std::vector<point_t> cloud_t;
 
     // Generate a point cloud from an (optionally) masked normal/depth image
     void generateFromImage(NormDepthImage &source, float camXZ, float camYZ);
+
+    void innerEdge();
 
 	PointCloud() = default;
     ~PointCloud() = default;
@@ -37,5 +49,9 @@ public:
 
 	// Internal cloud
     cloud_t cloud;
+    std::vector<int> cloud_indices;
+
+private:
+    Dim _source_dim;
 };
 

@@ -21,7 +21,7 @@ void GLWindow::showWindow(std::string name, Dim &size) {
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
         size.width, size.height,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
     if (!_window) {
         throw std::exception(SDL_GetError());
@@ -116,4 +116,19 @@ void GLWindow::closeWindow() {
     SDL_GL_DeleteContext(_context);
     SDL_DestroyWindow(_window);
     _window = nullptr;
+}
+
+void GLWindow::setFullscreen(bool fs) {
+    _fullscreen = fs;
+
+    if (_fullscreen) {
+        SDL_SetWindowFullscreen(_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    }
+    else {
+        SDL_SetWindowFullscreen(_window, 0);
+    }
+}
+
+void GLWindow::toggleFullscreen() {
+    setFullscreen(!_fullscreen);
 }

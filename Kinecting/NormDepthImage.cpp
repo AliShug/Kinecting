@@ -628,5 +628,5 @@ inline bool NormDepthImage::_QLinearFill::checkPx(int px, int cmp) {
 	}
 	res = _mm_cmp_ps(diff.Data, tol.Data, _CMP_LT_OQ);
     // check they're all 1 (<thresh)
-    return _mm_testc_ps(res, allOnes.Data);
+    return _mm_testc_ps(res, allOnes.Data) != 0;
 }

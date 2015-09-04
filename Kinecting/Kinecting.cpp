@@ -10,7 +10,9 @@
 #include "PointCloud.h"
 #include "GLObject.h"
 
-auto getTestPng(std::string file) {
+using namespace std;
+
+auto getTestPng(string file) {
     // Load a test image
     FIBITMAP *temp = FreeImage_Load(FIF_PNG, (file+".png").c_str(), PNG_DEFAULT);
     FIBITMAP *testBmp = FreeImage_ConvertTo32Bits(temp);
@@ -20,14 +22,14 @@ auto getTestPng(std::string file) {
     imW = FreeImage_GetWidth(testBmp);
     imH = FreeImage_GetHeight(testBmp);
 
-    auto testData = std::shared_ptr<uint32_t>(new uint32_t[imW * imH]);
+    auto testData = shared_ptr<uint32_t>(new uint32_t[imW * imH]);
     memcpy(testData.get(), FreeImage_GetBits(testBmp), 4 * imW * imH);
     FreeImage_Unload(testBmp);
 
     return testData;
 }
 
-void instructions(std::ostream &out) {
+void instructions(ostream &out) {
     out << "WS - Camera dolly | AD - Camera Strafe | QE - Camera Elevation\n";
     out << "Click/drag - Camera Look\n";
     out << "P - Pause\nR - Reset tracking\nO - Open pointcloud\nReturn - Save pointcloud\n\n";
@@ -48,7 +50,7 @@ int main(int argc, char *args[]) {
     //auto testData = getTestPng("normalTestImg");
 
     // Buffered output
-    std::stringstream log;
+    stringstream log;
 
     try {
         // Initialize the gui and kinect
@@ -59,17 +61,16 @@ int main(int argc, char *args[]) {
         int frame_h = kinect.depthFrameInfo.h;
 
         Dim fullSize = { frame_w, frame_h };
-        dispWindow.showWindow("Kinecting", fullSize);
-		auto &scene = dispWindow.scene;
-		scene.setCamera(fullSize, kinect.depthFrameInfo.yFov);
-		std::cout << scene.camera.fov.x;
+        Dim window = { 1280, 720 };
+        dispWindow.showWindow("Kinecting", window);
 
-		const float camXZ = tanf((70.6f * M_PI / 180.0f) / 2.0f);
-		const float camYZ = tanf((60.0f * M_PI / 180.0f) / 2.0f);
+		auto &scene = dispWindow.scene;
+		scene.setCamera(window, 60.0f/*kinect.depthFrameInfo.yFov*/);
+		cout << scene.camera.fov.x << "," << scene.camera.fov.y << endl;
 
 		// Storage for raw camera output
-		auto rawData = std::unique_ptr<uint16_t>(new uint16_t[fullSize.area()]);
-		auto floatData = std::unique_ptr<float>(new float[fullSize.area()]);
+		auto rawData = unique_ptr<uint16_t>(new uint16_t[fullSize.area()]);
+		auto floatData = unique_ptr<float>(new float[fullSize.area()]);
 
         // Image processing platform
         NormDepthImage img(fullSize);
@@ -137,23 +138,33 @@ int main(int argc, char *args[]) {
 					}
 					else if (e.key.keysym.scancode == SDL_SCANCODE_RETURN) {
 						pointCloud.saveToFile("cloud.txt");
-						std::cout << "Saved pointcloud to 'cloud.txt'" << std::endl;
+						cout << "Saved pointcloud to 'cloud.txt'" << endl;
 					}
                     else if (e.key.keysym.scancode == SDL_SCANCODE_O) {
                         pointCloud.loadFromFile("cloud.txt");
                         paused = true;
+                    }
+                    else if (e.key.keysym.scancode == SDL_SCANCODE_F11) {
+                        dispWindow.toggleFullscreen();
                     }
                 }
 
                 if (e.type == SDL_QUIT || (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE)) {
                     quit = true;
                 }
+
+                // Resize
+                if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    window = { e.window.data1, e.window.data2 };
+                    glViewport(0, 0, window.width, window.height);
+                    scene.setCameraDim(window);
+                }
             }
 
 
             {
                 // Exception-proof lock for depth read
-				std::lock_guard<decltype(kinect.frameLock)> lck(kinect.frameLock);
+				lock_guard<decltype(kinect.frameLock)> lck(kinect.frameLock);
                 memcpy(rawData.get(), kinect.depthData.get(), fullSize.area()*sizeof(uint16_t));
             }
             
@@ -181,7 +192,7 @@ int main(int argc, char *args[]) {
 				//img.threshold_meanDepthBlur(4, 0.001f);
 
 				// Calculate normals
-				img.calcNormals(camXZ, camYZ);
+				img.calcNormals(kinectXZ, kinectYZ);
 
 				// Blur preprocess
 				img.OPT_threshold_gaussNormalBlur(12, 0.8f, 0.01f);
@@ -196,7 +207,8 @@ int main(int argc, char *args[]) {
 			// *** Point Cloud
 
             // Now we can generate a point-cloud
-            pointCloud.generateFromImage(img, camXZ, camYZ);
+            pointCloud.generateFromImage(img, kinectXZ, kinectYZ);
+            pointCloud.innerEdge();
             // Display it
 			frangibleCloud->genPointCloud(pointCloud);
             baseCloud->genPointCloud({ 1, 0, 0 }, pointCloud);
@@ -227,7 +239,7 @@ int main(int argc, char *args[]) {
 				SetConsoleCursorPosition(hCon, { 0, 0 });
 
                 instructions(log);
-                log << (paused ? "--PAUSED--" : "--RUNNING--") << std::endl;
+                log << (paused ? "--PAUSED--" : "--RUNNING--") << endl;
 
                 // Linear algebra - let the library deal with the tricky stuff
 				mat3 cov = pointCloud.calcCov();
@@ -266,9 +278,9 @@ int main(int argc, char *args[]) {
                     }
                 }
 
-                log << std::setprecision(2);
-                log << "Eigenvalues        " << eigenVals[0] << "\t" << eigenVals[1] << "\t" << eigenVals[2] << std::endl;
-                log << "Sorted eigenvalues " << x << "\t" << y << "\t" << z << std::endl;
+                log << setprecision(2);
+                log << "Eigenvalues        " << eigenVals[0] << "\t" << eigenVals[1] << "\t" << eigenVals[2] << endl;
+                log << "Sorted eigenvalues " << x << "\t" << y << "\t" << z << endl;
 
                 // Ordered eigenvectors
                 mat3 sortedEig;
@@ -283,8 +295,8 @@ int main(int argc, char *args[]) {
                 }
                 prevEig = sortedEig;
 
-                log << "Eigenvectors: columnwise - unsorted - unstabilized --" << eigM << std::endl;
-                log << "Eigenvectors: columnwise - sorted   - stabilized   --" << sortedEig << std::endl;
+                log << "Eigenvectors: columnwise - unsorted - unstabilized --" << eigM << endl;
+                log << "Eigenvectors: columnwise - sorted   - stabilized   --" << sortedEig << endl;
 
                 // Visualise PCA transform
                 vec3 pos = pointCloud.meanPosition();
@@ -298,7 +310,7 @@ int main(int argc, char *args[]) {
 				frangibleCloud->applyTransform(inverse(sortedEig));
 
                 // Flush output
-                std::cout << log.str();
+                cout << log.str();
                 log.str("");
 			}
 
@@ -309,13 +321,13 @@ int main(int argc, char *args[]) {
             dispWindow.render();
         }
     }
-    catch (std::exception e) {
+    catch (exception e) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.what(), nullptr);
     }
 	catch (char* e) {
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e, nullptr);
 	}
-	catch (std::string e) {
+	catch (string e) {
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.c_str(), nullptr);
 	}
 
