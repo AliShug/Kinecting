@@ -57,6 +57,9 @@
     <ClInclude Include="GLScene.h">
       <Filter>Header Files\GL</Filter>
     </ClInclude>
+    <ClInclude Include="GLText.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -90,6 +93,9 @@
       <Filter>Source Files\GL</Filter>
     </ClCompile>
     <ClCompile Include="Kinecting.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GLText.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "Util.h"
 #include "GLObject.h"
+#include "GLText.h"
 
 // Manages a 3D scene within a GLWindow
 class GLScene
@@ -56,6 +57,12 @@ public:
 		auto obj = std::make_shared<GLObject>(this, fragShader, vertShader);
 		objects.push_back(obj);
 		return obj;
+	}
+
+	auto newTextOverlay() {
+		auto text = std::make_shared<GLText>(this);
+		objects.push_back(text);
+		return text;
 	}
 
 	// Render the scene's objects

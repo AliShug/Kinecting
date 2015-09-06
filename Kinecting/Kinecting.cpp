@@ -9,6 +9,7 @@
 #include "NormDepthImage.h"
 #include "PointCloud.h"
 #include "GLObject.h"
+#include "GLText.h"
 
 using namespace std;
 
@@ -101,7 +102,7 @@ int main(int argc, char *args[]) {
 		// Cube (test)
 		auto obj = scene.newObject("object_frag.glsl", "object_vert.glsl");
 		obj->genCuboid(0.1f, 0.1f, 0.1f);
-        obj->hide();
+        //obj->hide();
 
         // Tracking line
         auto trackLine0 = scene.newObject("solidcolor.glsl", "object_vert.glsl");
@@ -119,6 +120,10 @@ int main(int argc, char *args[]) {
         auto baseCloud = scene.newObject("solidcolor.glsl", "object_vert.glsl");
         baseCloud->renderMode = GLObject::RenderMode::POINTS;
         baseCloud->pointSize = 2.0f;
+
+		// Text overlay
+		auto overlayText = scene.newTextOverlay();
+		overlayText->drawText({ 20, 20 }, "Hello, world!");
 
         // Current tracking point
         Pt2i centre = { fullSize.width / 2, fullSize.height / 2 };
@@ -186,6 +191,8 @@ int main(int argc, char *args[]) {
 
                     glViewport(0, -window.height, projectorViewport.width, projectorViewport.height);
                     scene.setCameraDim(projectorViewport);
+
+					overlayText->onResize(window);
                 }
             }
 

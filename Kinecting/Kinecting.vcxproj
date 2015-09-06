@@ -58,18 +58,22 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="eigen325.props" />
+    <Import Project="SDL_TTF.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="eigen325.props" />
+    <Import Project="SDL_TTF.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="eigen325.props" />
+    <Import Project="SDL_TTF.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="eigen325.props" />
+    <Import Project="SDL_TTF.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -168,6 +172,7 @@
   <ItemGroup>
     <ClInclude Include="GLObject.h" />
     <ClInclude Include="GLScene.h" />
+    <ClInclude Include="GLText.h" />
     <ClInclude Include="GLWindow.h" />
     <ClInclude Include="KinectDevice.h" />
     <ClInclude Include="PointCloud.h" />
@@ -181,6 +186,7 @@
   <ItemGroup>
     <ClCompile Include="GLObject.cpp" />
     <ClCompile Include="GLScene.cpp" />
+    <ClCompile Include="GLText.cpp" />
     <ClCompile Include="GLWindow.cpp" />
     <ClCompile Include="KinectDevice.cpp" />
     <ClCompile Include="Kinecting.cpp" />

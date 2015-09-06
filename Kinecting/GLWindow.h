@@ -5,6 +5,7 @@
 #include "Util.h"
 #include "GLObject.h"
 #include "GLScene.h"
+#include "GLText.h"
 
 class GLWindow {
 public:
@@ -26,6 +27,8 @@ public:
             throw std::exception(SDL_GetError());
         }
 
+		GLText::GlobalInit();
+
         // OpenGL 3.3 Core
         if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3) < 0) {
             throw std::exception(SDL_GetError());
@@ -40,6 +43,7 @@ public:
 
     // Global exit (cleanup)
     static void ReleaseGUI() {
+		GLText::GlobalRelease();
         SDL_Quit();
     }
 

@@ -14,8 +14,9 @@ public:
     Texture();
     ~Texture();
 
-    void init(Format fmt, Dim &size);
+    void init(Format fmt, const Dim &size);
     void bind(GLuint prog, GLint ref, int index);
+	void resize(const Dim &size);
     void setImage(const void *data);
 
     void activate();

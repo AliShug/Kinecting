@@ -37,6 +37,7 @@
 #include <SDL.h>
 #include <GL/glew.h>
 #include <SDL_opengl.h>
+#include <SDL_ttf.h>
 
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>

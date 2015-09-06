@@ -62,7 +62,7 @@ public:
     void bind();
 
     // Renders the object using the current context
-    void render(const glm::mat4 &vpMat);
+    virtual void render(const glm::mat4 &vpMat);
 
 	// Get the object's transformation
 	glm::mat4 getTransform() {
@@ -93,6 +93,8 @@ public:
 	void unhide() { _hidden = false; }
 
 protected:
+	GLObject() {}
+
     // Member data
 	bool _hidden = false;
     bool _bound = false;

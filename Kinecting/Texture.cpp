@@ -4,12 +4,10 @@
 
 
 Texture::Texture() {}
-
-
 Texture::~Texture() {}
 
 
-void Texture::init(Format fmt, Dim &size) {
+void Texture::init(Format fmt, const Dim &size) {
     width = size.width;
     height = size.height;
     
@@ -42,6 +40,20 @@ void Texture::init(Format fmt, Dim &size) {
 
     // Allocate memory
     glTexImage2D(
+		GL_TEXTURE_2D, 0,
+		_glInternalFormat,
+		size.width, size.height, 0,
+		_glFormat, _glDataType,
+		nullptr);
+}
+
+void Texture::resize(const Dim &size) {
+	width = size.width;
+	height = size.height;
+
+	glBindTexture(GL_TEXTURE_2D, glTex);
+	// Allocate memory
+	glTexImage2D(
 		GL_TEXTURE_2D, 0,
 		_glInternalFormat,
 		size.width, size.height, 0,
