@@ -52,6 +52,10 @@ public:
         camera.fov.x = camera.fov.y * camera.aspect;
     }
 
+    // Camera settings save/load
+    void readCameraSettings(std::string file);
+    void saveCameraSettings(std::string file);
+
 	// Generate a new object
 	auto newObject(const std::string &fragShader, const std::string &vertShader) {
 		auto obj = std::make_shared<GLObject>(this, fragShader, vertShader);
@@ -67,10 +71,9 @@ public:
 
 	// Render the scene's objects
 	void render() {
-		glm::mat4 vp;
+        glm::mat4 vp = camera.calcProjection() * camera.calcView();
 
 		for (auto obj : objects) {
-			vp = camera.calcProjection() * camera.calcView();
 			obj->render(vp);
 		}
 	}

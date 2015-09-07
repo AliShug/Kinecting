@@ -29,5 +29,6 @@ protected:
     GLint _glInternalFormat;
     GLenum _glFormat, _glDataType;
     GLuint _prog;
+    GLint _glRef;
 };
 

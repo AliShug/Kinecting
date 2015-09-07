@@ -42,9 +42,6 @@ int main(int argc, char *args[]) {
 	GetConsoleScreenBufferInfo(hCon, &conInfo);
 	int screenChars = (conInfo.srWindow.Bottom + 1) * (conInfo.srWindow.Right + 1);
 
-    KinectDevice kinect;
-    GLWindow dispWindow;
-
 	bool paused = false;
 
     // Data for testing (load from png)
@@ -52,6 +49,7 @@ int main(int argc, char *args[]) {
 
     // Buffered output
     stringstream log;
+    stringstream message;
 
     // Projector stats
     const float projectorFovY = 27.5f;
@@ -59,6 +57,10 @@ int main(int argc, char *args[]) {
     const Dim projectorDim = { 845, 480 };
 
     try {
+        // Kinect and main window
+        KinectDevice kinect;
+        GLWindow dispWindow;
+
         // Initialize the gui and kinect
         GLWindow::InitGUI();
         kinect.connect(kinect.DEPTH_STREAM);
@@ -69,13 +71,15 @@ int main(int argc, char *args[]) {
         Dim fullSize = { frame_w, frame_h };
         Dim window = { 1280, 720 };
         Dim projectorViewport = window;
-        projectorViewport.height *= 2;
+        projectorViewport.height *= 2; // projector viewport
 
         dispWindow.showWindow("Kinecting", window);
 
-        float fov = projectorFovY * 2;
+        float fov = projectorFovY * 2; // projector fov
 		auto &scene = dispWindow.scene;
 		scene.setCamera(projectorViewport, fov);
+        glViewport(0, -window.height, projectorViewport.width, projectorViewport.height);
+
 		cout << scene.camera.fov.x << "," << scene.camera.fov.y << endl;
 
 		// Storage for raw camera output
@@ -90,7 +94,7 @@ int main(int argc, char *args[]) {
 		auto surf = scene.newObject("rgb_frag.glsl", "normal_vertex.glsl");
 		surf->renderMode = GLObject::RenderMode::POINTS;
 		surf->genQuad(fullSize);
-        surf->pointSize = 3.0f;
+        surf->pointSize = 10.0f;
 		
 		Texture normalTex, depthTex;
 		normalTex.init(Texture::BGR, fullSize);
@@ -123,7 +127,6 @@ int main(int argc, char *args[]) {
 
 		// Text overlay
 		auto overlayText = scene.newTextOverlay();
-		overlayText->drawText({ 20, 20 }, "Hello, world!");
 
         // Current tracking point
         Pt2i centre = { fullSize.width / 2, fullSize.height / 2 };
@@ -140,42 +143,66 @@ int main(int argc, char *args[]) {
         SDL_Event e;
         bool quit = false;
         while (!quit) {
+            // Clear text overlay
+            overlayText->clear();
+
             while (SDL_PollEvent(&e) != 0) {
                 // Handle all waiting events
                 dispWindow.handleEvent(e);
 
                 if (e.type == SDL_KEYDOWN) {
-                    // Tracking reset
-                    if (e.key.keysym.scancode == SDL_SCANCODE_R) {
+                    switch (e.key.keysym.scancode) {
+                        // Tracking reset
+                    case SDL_SCANCODE_R:
                         trackPt = centre;
-                    }
+                        break;
 
-                    // Controls
-					else if (e.key.keysym.scancode == SDL_SCANCODE_P) {
-						paused = !paused;
-					}
-					else if (e.key.keysym.scancode == SDL_SCANCODE_RETURN) {
-						pointCloud.saveToFile("cloud.txt");
-						cout << "Saved pointcloud to 'cloud.txt'" << endl;
-					}
-                    else if (e.key.keysym.scancode == SDL_SCANCODE_O) {
+                        // Controls
+                    case SDL_SCANCODE_P:
+                        paused = !paused;
+                        if (paused) {
+                            message.str("Paused");
+                        }
+                        else {
+                            message.str("Running");
+                        }
+                        break;
+                    case SDL_SCANCODE_RETURN:
+                        pointCloud.saveToFile("cloud.txt");
+                        message.str("Saved pointcloud to 'cloud.txt'");
+                        break;
+                    case SDL_SCANCODE_O:
                         pointCloud.loadFromFile("cloud.txt");
                         paused = true;
-                    }
+                        message.str("Loaded pointcloud 'cloud.txt'");
+                        break;
 
-                    // Fullscreen
-                    else if (e.key.keysym.scancode == SDL_SCANCODE_F11) {
+                        // Fullscreen
+                    case SDL_SCANCODE_F11:
                         dispWindow.toggleFullscreen();
-                    }
+                        break;
 
-                    // Zoom lens
-                    else if (e.key.keysym.scancode == SDL_SCANCODE_KP_PLUS) {
-                        fov -= 1.0f;
+                        // Zoom lens
+                    case SDL_SCANCODE_KP_PLUS:
+                        fov -= 0.02f;
                         scene.setCameraFov(fov);
-                    }
-                    else if (e.key.keysym.scancode == SDL_SCANCODE_KP_MINUS) {
-                        fov += 1.0f;
+                        cout << "Fov " << fov;
+                        break;
+                    case SDL_SCANCODE_KP_MINUS:
+                        fov += 0.02f;
                         scene.setCameraFov(fov);
+                        cout << "Fov " << fov;
+                        break;
+
+                        // Save/restore camera settings
+                    case SDL_SCANCODE_V:
+                        scene.saveCameraSettings("camera_new.cfg");
+                        message.str("Saved camera settings to 'camera_new.cfg'");
+                        break;
+                    case SDL_SCANCODE_B:
+                        scene.readCameraSettings("camera.cfg");
+                        message.str("Loaded camera settings from 'camera.cfg'");
+                        break;
                     }
                 }
 
@@ -192,7 +219,7 @@ int main(int argc, char *args[]) {
                     glViewport(0, -window.height, projectorViewport.width, projectorViewport.height);
                     scene.setCameraDim(projectorViewport);
 
-					overlayText->onResize(window);
+					overlayText->onResize(projectorViewport);
                 }
             }
 
@@ -204,6 +231,7 @@ int main(int argc, char *args[]) {
             }
             
 			if (!paused) {
+
 				// Convert depth to float-32 (and mm to m)
 				const int count = frame_w * frame_h;
 				auto fd = floatData.get();
@@ -349,6 +377,9 @@ int main(int argc, char *args[]) {
                 log.str("");
 			}
 
+
+            // Text display
+            overlayText->drawText({ 20, 20 }, message.str());
 
             // Display
 			surf->shaders.use();

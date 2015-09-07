@@ -23,16 +23,5 @@ void main() {
     //gl_FragDepth = texture(UInputDepth, uv).r / 3000.0f;
     gl_FragDepth = gl_FragCoord.z;
 
-    // Hacky target icon thing
-    vec2 pos = gl_FragCoord.xy;
-    pos.x /= camXDim;
-    pos.y /= camYDim;
-
-    float dist = distance(pos, vec2(0.5f, 0.5f));
-    if (dist > 0.01f && dist < 0.013f) {
-        LFragment = vec3(1);
-        gl_FragDepth = 0.0f;
-    }
-
     //if (keep < 0.9999f) discard;
 }

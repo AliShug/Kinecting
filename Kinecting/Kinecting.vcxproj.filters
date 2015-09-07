@@ -58,7 +58,7 @@
       <Filter>Header Files\GL</Filter>
     </ClInclude>
     <ClInclude Include="GLText.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\GL</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -96,7 +96,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GLText.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\GL</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

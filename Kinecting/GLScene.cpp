@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "GLScene.h"
 
+using namespace std;
+using namespace glm;
 
 void GLScene::Camera::handleInput(const SDL_Event &e) {
     float mod;
@@ -59,12 +61,13 @@ void GLScene::Camera::handleInput(const SDL_Event &e) {
                 break;
             }
         }
+        cout << "Eye " << eye << endl;
         break;
 
 	case SDL_MOUSEMOTION:
 		// Check the left button is depressed
 		if (e.motion.state == SDL_BUTTON(1)) {
-			glm::vec2 delta;
+			vec2 delta;
 			delta.x = float(e.motion.xrel);
 			delta.y = float(e.motion.yrel);
 			angle += delta*mod*lookSpeed;
@@ -73,7 +76,7 @@ void GLScene::Camera::handleInput(const SDL_Event &e) {
 	}
 }
 
-glm::mat4 GLScene::Camera::calcView() {
+mat4 GLScene::Camera::calcView() {
 	using namespace glm;
 
 	// Camera angles
@@ -88,4 +91,46 @@ glm::mat4 GLScene::Camera::calcView() {
 	up = cross(dirVec, side);
 
 	return lookAt(eye, targ, up);
+}
+
+void GLScene::readCameraSettings(string file) {
+    // Read in camera data
+    ifstream in(file);
+
+    if (in.is_open()) {
+        string line;
+        size_t sz;
+
+        // Angle
+        getline(in, line);
+        camera.angle.x = stof(line, &sz);
+        camera.angle.y = stof(line.substr(sz + 1));
+
+        // Eye position
+        getline(in, line);
+        camera.eye.x = stof(line, &sz);
+        line = line.substr(sz + 1);
+        camera.eye.y = stof(line, &sz);
+        camera.eye.z = stof(line.substr(sz + 1));
+
+        // Fov
+        getline(in, line);
+        camera.fov.x = stof(line, &sz);
+        camera.fov.y = stof(line.substr(sz + 1));
+
+        in.close();
+    }
+}
+
+void GLScene::saveCameraSettings(string file) {
+    // Write out necessary camera data
+    ofstream out(file);
+
+    if (out.is_open()) {
+        out << camera.angle.x << "," << camera.angle.y << endl;
+        out << camera.eye.x << "," << camera.eye.y << "," << camera.eye.z << endl;
+        out << camera.fov.x << "," << camera.fov.y << endl;
+
+        out.close();
+    }
 }

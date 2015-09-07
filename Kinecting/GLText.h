@@ -28,6 +28,9 @@ public:
 
 	void drawText(glm::vec2 pt, std::string text);
 	virtual void render(const glm::mat4 &vpMat);
+    void clear() {
+        SDL_FillRect(_surface, nullptr, 0);
+    }
 
 	void onResize(const Dim &dim);
 

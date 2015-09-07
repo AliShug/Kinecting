@@ -51,7 +51,7 @@ void Texture::resize(const Dim &size) {
 	width = size.width;
 	height = size.height;
 
-	glBindTexture(GL_TEXTURE_2D, glTex);
+    activate();
 	// Allocate memory
 	glTexImage2D(
 		GL_TEXTURE_2D, 0,
@@ -63,6 +63,7 @@ void Texture::resize(const Dim &size) {
 
 void Texture::bind(GLuint prog, GLint ref, int index) {
     _prog = prog;
+    _glRef = ref;
     textureIndex = index;
 
     glUseProgram(_prog);

@@ -8,8 +8,7 @@ using namespace std;
 TTF_Font *GLText::_LogFont = nullptr;
 
 void GLText::init(const Dim &dim) {
-	_tex.init(Texture::RGB, dim);
-	shaders.bindTexture(_tex, "UInputImg");
+    cout << "Init with " << dim.width << "," << dim.height << endl;
 
 	// OpenGL-compatible SDL rendering surface
 	uint32_t rmask, gmask, bmask, amask;
@@ -30,6 +29,9 @@ void GLText::init(const Dim &dim) {
 	if (_surface == nullptr) {
 		throw string("CreateRGBSurface failed: ") + SDL_GetError();
 	}
+
+    _tex.init(Texture::RGB, dim);
+    shaders.bindTexture(_tex, "UInputImg");
 }
 
 GLText::GLText(const GLScene *parent) : GLObject(parent, "text_frag.glsl", "text_vert.glsl") {
@@ -38,8 +40,10 @@ GLText::GLText(const GLScene *parent) : GLObject(parent, "text_frag.glsl", "text
 }
 
 void GLText::drawText(vec2 pt, string text) {
+    if (text.empty()) return;
+
 	SDL_Surface *newText;
-	newText = TTF_RenderText_Solid(_LogFont, text.c_str(), { 255, 255, 255, 255 });
+	newText = TTF_RenderText_Blended(_LogFont, text.c_str(), { 255, 255, 255, 255 });
 
 	if (newText == nullptr) {
 		throw string("Text rendering failed: ") + TTF_GetError();
@@ -51,7 +55,10 @@ void GLText::drawText(vec2 pt, string text) {
 	targetRect.w = newText->w;
 	targetRect.h = newText->h;
 
-	SDL_BlitSurface(newText, nullptr, _surface, &targetRect);
+	int res = SDL_BlitSurface(newText, nullptr, _surface, &targetRect);
+    if (res < 0) {
+        throw string("Failed to blit text surface: ") + SDL_GetError();
+    }
 }
 
 void GLText::render(const glm::mat4 &vpMat) {
@@ -76,9 +83,10 @@ void GLText::render(const glm::mat4 &vpMat) {
 }
 
 void GLText::onResize(const Dim &dim) {
+    cout << "Resize to " << dim.width << "," << dim.height << endl;
+
 	SDL_FreeSurface(_surface);
 	_tex.resize(dim);
-	shaders.bindTexture(_tex, "UInputImg");
 
 	// OpenGL-compatible SDL rendering surface
 	uint32_t rmask, gmask, bmask, amask;
