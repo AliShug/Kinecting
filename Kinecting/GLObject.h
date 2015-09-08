@@ -45,6 +45,7 @@ public:
     enum RenderMode {
         TRIANGLES = GL_TRIANGLES,
         LINE_STRIP = GL_LINE_STRIP,
+        LINES = GL_LINES,
 		POINTS = GL_POINTS
     };
 
@@ -54,9 +55,10 @@ public:
     // Object generation functions
 	void genQuad(const Dim &size);
     void genCuboid(float length = 1, float width = 1, float height = 1);
-    void genLine(const glm::vec3 &start, const glm::vec3 &end, const color_t &col = color_t());
+    void genLine(const glm::vec3 &start, const glm::vec3 &end, const color_t &col = Colors::white);
 	void genPointCloud(const PointCloud &pc);
     void genPointCloud(const color_t &col, const PointCloud &pc);
+    void genFrustrum(float nearDist, float farDist, glm::vec2 fov, const color_t &col = Colors::white, bool half = false);
 
     // Binds the object using the current context
     void bind();
@@ -91,6 +93,8 @@ public:
 
 	void hide() { _hidden = true; }
 	void unhide() { _hidden = false; }
+
+    static glm::mat4 projectorVP;
 
 protected:
 	GLObject() {}

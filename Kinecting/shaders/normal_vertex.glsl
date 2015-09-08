@@ -4,11 +4,13 @@ in vec3 pos;
 in vec2 uv;
 
 out vec2 pixelPos;
+out float inProjector;
 out float keep;
 
 uniform sampler2D UInputDepth;
 
 uniform mat4 MatMVP;
+uniform mat4 MatMVP_projector;
 uniform float kinectXZFactor;
 uniform float kinectYZFactor;
 
@@ -24,7 +26,11 @@ void main() {
     newPos.xy *= newPos.z * factor;
 
     gl_Position = MatMVP * vec4(newPos, 1);
-    //gl_Position.x = -gl_Position.x;
+    vec4 projectorPos = MatMVP_projector * vec4(newPos, 1);
+    projectorPos /= projectorPos.w;
+    inProjector = float(projectorPos.x > -1 && projectorPos.x < 1 &&
+        projectorPos.y > 0 && projectorPos.y < 1);
+
     pixelPos = uv;
 
     keep = 1.0f;

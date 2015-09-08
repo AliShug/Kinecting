@@ -12,6 +12,7 @@
 #include "GLText.h"
 
 using namespace std;
+using namespace glm;
 
 auto getTestPng(string file) {
     // Load a test image
@@ -36,6 +37,58 @@ void instructions(ostream &out) {
     out << "P - Pause\nR - Reset tracking\nO - Open pointcloud\nReturn - Save pointcloud\n\n";
 }
 
+mat3 pca(PointCloud &pc) {
+    mat3 cov = pc.calcCov();
+    Eigen::Matrix3f mat = Eigen::Map<Eigen::Matrix3f>(value_ptr(cov));
+    Eigen::EigenSolver<Eigen::Matrix3f> solver(mat);
+    Eigen::Vector3f eigenVals = solver.eigenvalues().real();
+    Eigen::Matrix3f eigenVecs = solver.eigenvectors().real();
+
+    // Matrix containing eigenvectors in COLUMNS
+    mat3 eigM;
+    memcpy(value_ptr(eigM), eigenVecs.data(), sizeof(mat3));
+
+    // Sort on eigenvalues (quick bubble-sort)
+    float x = 0.0f, y = 0.0f, z = 0.0f;
+    int xI = 0, yI = 0, zI = 0;
+    for (int i = 0; i < 3; i++) {
+        float e = eigenVals[i];
+        if (e > x) {
+            // shuffle down
+            z = y;
+            zI = yI;
+            y = x;
+            yI = xI;
+            x = e;
+            xI = i;
+        }
+        else if (e > y) {
+            z = y;
+            zI = yI;
+            y = e;
+            yI = i;
+        }
+        else {
+            z = e;
+            zI = i;
+        }
+    }
+
+    // Ordered eigenvectors
+    mat3 sortedEig;
+    sortedEig[0] = eigM[xI];
+    sortedEig[1] = eigM[yI];
+    sortedEig[2] = eigM[zI];
+    static mat3 prevEig = sortedEig;
+
+    // Stabilization - match up the dot-sign
+    for (int i = 0; i < 3; i++) {
+        sortedEig[i] *= (dot(sortedEig[i], prevEig[i]) < 0) ? -1 : 1;
+    }
+    prevEig = sortedEig;
+    return sortedEig;
+}
+
 int main(int argc, char *args[]) {
 	HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
 	CONSOLE_SCREEN_BUFFER_INFO conInfo;
@@ -56,10 +109,11 @@ int main(int argc, char *args[]) {
     const float projectorFovX = 48.9f;
     const Dim projectorDim = { 845, 480 };
 
-    try {
+    //try
+    {
         // Kinect and main window
         KinectDevice kinect;
-        GLWindow dispWindow;
+        GLWindow dispWindow, projectorWindow;
 
         // Initialize the gui and kinect
         GLWindow::InitGUI();
@@ -70,17 +124,27 @@ int main(int argc, char *args[]) {
 
         Dim fullSize = { frame_w, frame_h };
         Dim window = { 1280, 720 };
-        Dim projectorViewport = window;
-        projectorViewport.height *= 2; // projector viewport
 
-        dispWindow.showWindow("Kinecting", window);
+        // Current tracking point
+        Pt2i centre = { fullSize.width / 2, fullSize.height / 2 };
+        Pt2i trackPt = centre;
 
-        float fov = projectorFovY * 2; // projector fov
+        // Create the GL contexts for separate windows (displaying the windows)
+        dispWindow.showWindow("Kinecting - freelook", window);
+        projectorWindow.showWindow("Kinecting - projector", window);
+
+        // Setup on free-look context (camera)
+        dispWindow.activate();
 		auto &scene = dispWindow.scene;
-		scene.setCamera(projectorViewport, fov);
-        glViewport(0, -window.height, projectorViewport.width, projectorViewport.height);
+		scene.camera.set(false, window, 60.0f);
+        //
 
-		cout << scene.camera.fov.x << "," << scene.camera.fov.y << endl;
+        // Setup on projector context (camera)
+        // Note the offset viewport, important for the short-throw projector
+        projectorWindow.activate();
+        auto &projScene = projectorWindow.scene;
+        projScene.camera.set(true, window, projectorFovY);
+        //
 
 		// Storage for raw camera output
 		auto rawData = unique_ptr<uint16_t>(new uint16_t[fullSize.area()]);
@@ -89,12 +153,23 @@ int main(int argc, char *args[]) {
         // Image processing platform
         NormDepthImage img(fullSize);
 
+
+        // Generate the main window's objects *****
+        dispWindow.activate();
 		
-		// Camera output surface
+        // -- Kinect frustrum
+        auto kinectFrustrum = scene.newObject("solidcolor.glsl", "object_vert.glsl");
+        kinectFrustrum->genFrustrum(0.5f, 4.5f, { kinect.depthFrameInfo.xFov, kinect.depthFrameInfo.yFov });
+
+        // -- Projector frustrum
+        auto projFrustrum = scene.newObject("solidcolor.glsl", "object_vert.glsl");
+        projFrustrum->genFrustrum(0.0f, 4.0f, { projectorFovX, projectorFovY }, Colors::red, true);
+
+		//--  Camera output surface
 		auto surf = scene.newObject("rgb_frag.glsl", "normal_vertex.glsl");
 		surf->renderMode = GLObject::RenderMode::POINTS;
 		surf->genQuad(fullSize);
-        surf->pointSize = 10.0f;
+        surf->pointSize = 2.0f;
 		
 		Texture normalTex, depthTex;
 		normalTex.init(Texture::BGR, fullSize);
@@ -103,12 +178,12 @@ int main(int argc, char *args[]) {
 		surf->shaders.bindTexture(normalTex, "UInputImg");
 		surf->shaders.bindTexture(depthTex, "UInputDepth");
 
-		// Cube (test)
+		// -- Cube (test)
 		auto obj = scene.newObject("object_frag.glsl", "object_vert.glsl");
 		obj->genCuboid(0.1f, 0.1f, 0.1f);
         //obj->hide();
 
-        // Tracking line
+        // -- Tracking line
         auto trackLine0 = scene.newObject("solidcolor.glsl", "object_vert.glsl");
         trackLine0->renderMode = GLObject::RenderMode::LINE_STRIP;
 		auto trackLine1 = scene.newObject("solidcolor.glsl", "object_vert.glsl");
@@ -116,25 +191,36 @@ int main(int argc, char *args[]) {
 		auto trackLine2 = scene.newObject("solidcolor.glsl", "object_vert.glsl");
 		trackLine2->renderMode = GLObject::RenderMode::LINE_STRIP;
 
-		// Tracked cloud
+		// -- Tracked cloud
 		PointCloud pointCloud;
 		auto frangibleCloud = scene.newObject("solidcolor.glsl", "object_vert.glsl");
 		frangibleCloud->renderMode = GLObject::RenderMode::POINTS;
 		frangibleCloud->pointSize = 3.0f;
-        auto baseCloud = scene.newObject("solidcolor.glsl", "object_vert.glsl");
-        baseCloud->renderMode = GLObject::RenderMode::POINTS;
-        baseCloud->pointSize = 2.0f;
-
-		// Text overlay
-		auto overlayText = scene.newTextOverlay();
-
-        // Current tracking point
-        Pt2i centre = { fullSize.width / 2, fullSize.height / 2 };
-        Pt2i trackPt = centre;
 
 		// TEMP
 		// hide surface
 		//surf->hide();
+
+
+        // Generate the projector window's objects ****
+        projectorWindow.activate();
+
+        // -- Tracked cloud
+        auto baseCloud = projScene.newObject("solidcolor.glsl", "object_vert.glsl");
+        baseCloud->renderMode = GLObject::RenderMode::POINTS;
+        baseCloud->pointSize = 2.0f;
+
+        //--  Second depth/normals output surface
+        auto surf2 = projScene.newObject("rgb_frag.glsl", "normal_vertex.glsl");
+        surf2->renderMode = GLObject::RenderMode::POINTS;
+        surf2->genQuad(fullSize);
+
+        Texture normalTex2, depthTex2;
+        normalTex2.init(Texture::BGR, fullSize);
+        depthTex2.init(Texture::DEPTH_FLOAT, fullSize);
+
+        surf2->shaders.bindTexture(normalTex2, "UInputImg");
+        surf2->shaders.bindTexture(depthTex2, "UInputDepth");
 
 
         // Begin reading in frames...
@@ -143,13 +229,12 @@ int main(int argc, char *args[]) {
         SDL_Event e;
         bool quit = false;
         while (!quit) {
-            // Clear text overlay
-            overlayText->clear();
-
             while (SDL_PollEvent(&e) != 0) {
                 // Handle all waiting events
+                projectorWindow.handleEvent(e);
                 dispWindow.handleEvent(e);
 
+                // General (shared) application control
                 if (e.type == SDL_KEYDOWN) {
                     switch (e.key.keysym.scancode) {
                         // Tracking reset
@@ -157,7 +242,7 @@ int main(int argc, char *args[]) {
                         trackPt = centre;
                         break;
 
-                        // Controls
+                        // Pause
                     case SDL_SCANCODE_P:
                         paused = !paused;
                         if (paused) {
@@ -167,6 +252,8 @@ int main(int argc, char *args[]) {
                             message.str("Running");
                         }
                         break;
+
+                        // Cloud save/load
                     case SDL_SCANCODE_RETURN:
                         pointCloud.saveToFile("cloud.txt");
                         message.str("Saved pointcloud to 'cloud.txt'");
@@ -176,50 +263,12 @@ int main(int argc, char *args[]) {
                         paused = true;
                         message.str("Loaded pointcloud 'cloud.txt'");
                         break;
-
-                        // Fullscreen
-                    case SDL_SCANCODE_F11:
-                        dispWindow.toggleFullscreen();
-                        break;
-
-                        // Zoom lens
-                    case SDL_SCANCODE_KP_PLUS:
-                        fov -= 0.02f;
-                        scene.setCameraFov(fov);
-                        cout << "Fov " << fov;
-                        break;
-                    case SDL_SCANCODE_KP_MINUS:
-                        fov += 0.02f;
-                        scene.setCameraFov(fov);
-                        cout << "Fov " << fov;
-                        break;
-
-                        // Save/restore camera settings
-                    case SDL_SCANCODE_V:
-                        scene.saveCameraSettings("camera_new.cfg");
-                        message.str("Saved camera settings to 'camera_new.cfg'");
-                        break;
-                    case SDL_SCANCODE_B:
-                        scene.readCameraSettings("camera.cfg");
-                        message.str("Loaded camera settings from 'camera.cfg'");
-                        break;
                     }
                 }
 
+                // Closing either window quits the application
                 if (e.type == SDL_QUIT || (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE)) {
                     quit = true;
-                }
-
-                // Resize
-                if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
-                    window = { e.window.data1, e.window.data2 };
-                    projectorViewport = window;
-                    projectorViewport.height *= 2;
-
-                    glViewport(0, -window.height, projectorViewport.width, projectorViewport.height);
-                    scene.setCameraDim(projectorViewport);
-
-					overlayText->onResize(projectorViewport);
                 }
             }
 
@@ -230,8 +279,8 @@ int main(int argc, char *args[]) {
                 memcpy(rawData.get(), kinect.depthData.get(), fullSize.area()*sizeof(uint16_t));
             }
             
+            // Processing on active incoming stream
 			if (!paused) {
-
 				// Convert depth to float-32 (and mm to m)
 				const int count = frame_w * frame_h;
 				auto fd = floatData.get();
@@ -244,8 +293,10 @@ int main(int argc, char *args[]) {
 				// Pass to image processor and gui
 				img.setDepth(floatData.get());
 
+                projectorWindow.activate();
+                depthTex2.setImage(floatData.get());
+
 				dispWindow.activate();
-				surf->shaders.use();
 				depthTex.setImage(floatData.get());
 
 				// **************************************************
@@ -263,27 +314,20 @@ int main(int argc, char *args[]) {
 
 				// Flood-fill
 				img.threshold_normalFlood(trackPt, 0.1f, 0.01f);
+
+                // Now we can generate a point-cloud
+                pointCloud.generateFromImage(img, kinectXZ, kinectYZ);
+                //pointCloud.innerEdge();
 			}
 
-
-			// **************************************************
-			// *** Point Cloud
-
-            // Now we can generate a point-cloud
-            pointCloud.generateFromImage(img, kinectXZ, kinectYZ);
-            //pointCloud.innerEdge();
-            // Display it
+            // Display the point cloud (convert to object mesh data)
 			frangibleCloud->genPointCloud(pointCloud);
-            baseCloud->genPointCloud(Colors::orange, pointCloud);
+            baseCloud->genPointCloud(Colors::white, pointCloud);
 
-            // re-track
+            // Tracking
             auto medPos = pointCloud.medianPoint();
             trackPt.x = int(medPos.screen.x); trackPt.y = int(medPos.screen.y);
-
-            // tracking line
-            trackLine0->genLine(medPos.pos, glm::vec3(0));
-
-            // tracking object
+            trackLine0->genLine(medPos.pos, vec3(0));
             obj->setPosition(medPos.pos);
 
             // Pull out a formatted uint32 image
@@ -291,111 +335,48 @@ int main(int argc, char *args[]) {
 
 			// Principal component analysis
 			if (pointCloud.cloud.size() > 100) {
-                // Convenience
-                using namespace glm;
+                mat3 pcaMat = pca(pointCloud);
 
-				// Set up for logging
-                if (!paused) {
-                    DWORD nul;
-                    FillConsoleOutputCharacter(hCon, ' ', screenChars, { 0, 0 }, &nul);
-                }
-				SetConsoleCursorPosition(hCon, { 0, 0 });
-
-                instructions(log);
-                log << (paused ? "--PAUSED--" : "--RUNNING--") << endl;
-
-                // Linear algebra - let the library deal with the tricky stuff
-				mat3 cov = pointCloud.calcCov();
-				Eigen::Matrix3f mat = Eigen::Map<Eigen::Matrix3f>(value_ptr(cov));
-				Eigen::EigenSolver<Eigen::Matrix3f> solver(mat);
-				Eigen::Vector3f eigenVals = solver.eigenvalues().real();
-				Eigen::Matrix3f eigenVecs = solver.eigenvectors().real();
-
-                // Matrix containing eigenvectors in COLUMNS
-                mat3 eigM;
-                memcpy(value_ptr(eigM), eigenVecs.data(), sizeof(mat3));
-
-                // Sort on eigenvalues (quick bubble-sort)
-                float x = 0.0f, y = 0.0f, z = 0.0f;
-                int xI = 0, yI = 0, zI = 0;
-                for (int i = 0; i < 3; i++) {
-                    float e = eigenVals[i];
-                    if (e > x) {
-                        // shuffle down
-                        z = y;
-                        zI = yI;
-                        y = x;
-                        yI = xI;
-                        x = e;
-                        xI = i;
-                    }
-                    else if (e > y) {
-                        z = y;
-                        zI = yI;
-                        y = e;
-                        yI = i;
-                    }
-                    else {
-                        z = e;
-                        zI = i;
-                    }
-                }
-
-                log << setprecision(2);
-                log << "Eigenvalues        " << eigenVals[0] << "\t" << eigenVals[1] << "\t" << eigenVals[2] << endl;
-                log << "Sorted eigenvalues " << x << "\t" << y << "\t" << z << endl;
-
-                // Ordered eigenvectors
-                mat3 sortedEig;
-                sortedEig[0] = eigM[xI];
-                sortedEig[1] = eigM[yI];
-                sortedEig[2] = eigM[zI];
-                static mat3 prevEig = sortedEig;
-
-                // Stabilization - match up the dot-sign
-                for (int i = 0; i < 3; i++) {
-                    sortedEig[i] *= (dot(sortedEig[i], prevEig[i]) < 0) ? -1 : 1;
-                }
-                prevEig = sortedEig;
-
-                log << "Eigenvectors: columnwise - unsorted - unstabilized --" << eigM << endl;
-                log << "Eigenvectors: columnwise - sorted   - stabilized   --" << sortedEig << endl;
-
-                // Visualise PCA transform
                 vec3 pos = pointCloud.meanPosition();
-                trackLine0->genLine(pos, pos + sortedEig[0], Colors::red);
-                trackLine1->genLine(pos, pos + sortedEig[1], Colors::green);
-                trackLine2->genLine(pos, pos + sortedEig[2], Colors::blue);
+                trackLine0->genLine(pos, pos + pcaMat[0], Colors::red);
+                trackLine1->genLine(pos, pos + pcaMat[1], Colors::green);
+                trackLine2->genLine(pos, pos + pcaMat[2], Colors::blue);
 
-				// Transform frangible cloud into calculated local space
-				auto invMeanPos = translate(mat4(), -pointCloud.meanPosition());
-				frangibleCloud->applyTransform(invMeanPos);
-				frangibleCloud->applyTransform(inverse(sortedEig));
-
-                // Flush output
-                cout << log.str();
-                log.str("");
+                // Transform frangible cloud into calculated local space
+                auto invMeanPos = translate(mat4(), -pointCloud.meanPosition());
+                frangibleCloud->applyTransform(invMeanPos);
+                frangibleCloud->applyTransform(inverse(pcaMat));
 			}
 
 
             // Text display
-            overlayText->drawText({ 20, 20 }, message.str());
+            scene.getTextOverlay()->drawText({ 20, 20 }, message.str());
+
+            // Projector frustrum
+            projFrustrum->setPosition(projScene.camera.eye);
+            projFrustrum->setRotation(vec3(projScene.camera.angle.y, 0.0f, M_PI/2 - projScene.camera.angle.x));
 
             // Display
-			surf->shaders.use();
+            // TODO: change
+            GLObject::projectorVP = projScene.camera.calcProjection() * projScene.camera.calcView();
 			normalTex.setImage(pixels.get());
             dispWindow.render();
+
+            // Projector display
+            projectorWindow.activate();
+            normalTex2.setImage(pixels.get());
+            projectorWindow.render();
         }
     }
-    catch (exception e) {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.what(), nullptr);
-    }
-	catch (char* e) {
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e, nullptr);
-	}
-	catch (string e) {
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.c_str(), nullptr);
-	}
+ //   catch (exception e) {
+ //       SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.what(), nullptr);
+ //   }
+	//catch (char* e) {
+	//	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e, nullptr);
+	//}
+	//catch (string e) {
+	//	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.c_str(), nullptr);
+	//}
 
     // Explicit cleanup (mainly for SDL subsystems)
     GLWindow::ReleaseGUI();

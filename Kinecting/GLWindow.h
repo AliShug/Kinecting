@@ -39,6 +39,9 @@ public:
         if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE) < 0) {
             throw std::exception(SDL_GetError());
         }
+
+        // SDL hints - prevent the fullscreen window from hiding itself
+        SDL_SetHintWithPriority(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0", SDL_HintPriority::SDL_HINT_OVERRIDE);
     }
 
     // Global exit (cleanup)
@@ -55,7 +58,7 @@ public:
 	// Render the 3D view
 	virtual void render() {
 		activate();
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		scene.render();
 		SDL_GL_SwapWindow(_window);
 	}
@@ -75,12 +78,20 @@ public:
 	}
 
 	GLScene scene;
+    std::stringstream message;
+    std::shared_ptr<GLText> overlay = nullptr;
 
 protected:
     // Error check util
     bool checkGl(const char* location);
 
     // Members
+    int _windowID = -1;
+    //Window focus
+    bool _mouseFocus;
+    bool _keyboardFocus;
+    bool _minimized;
+    bool _shown;
     SDL_Window *_window = nullptr;
     SDL_GLContext _context = nullptr;
 

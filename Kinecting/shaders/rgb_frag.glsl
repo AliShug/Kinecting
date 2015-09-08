@@ -8,6 +8,7 @@ uniform float camYDim;
 
 in vec2 pixelPos;
 in float keep;
+in float inProjector;
 out vec3 LFragment;
 
 void main() {
@@ -17,7 +18,7 @@ void main() {
 
     // Write back color value
     vec3 col = texture(UInputImg, uv).rgb;
-    LFragment = col;//vec3(0, 0, col.b);
+    LFragment = (0.5f + 0.5f*inProjector) * col;
 
     // Write back depth
     //gl_FragDepth = texture(UInputDepth, uv).r / 3000.0f;

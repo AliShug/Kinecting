@@ -8,8 +8,6 @@ using namespace std;
 TTF_Font *GLText::_LogFont = nullptr;
 
 void GLText::init(const Dim &dim) {
-    cout << "Init with " << dim.width << "," << dim.height << endl;
-
 	// OpenGL-compatible SDL rendering surface
 	uint32_t rmask, gmask, bmask, amask;
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
@@ -83,7 +81,7 @@ void GLText::render(const glm::mat4 &vpMat) {
 }
 
 void GLText::onResize(const Dim &dim) {
-    cout << "Resize to " << dim.width << "," << dim.height << endl;
+    if (dim.width == _tex.width && dim.height == _tex.height) return;
 
 	SDL_FreeSurface(_surface);
 	_tex.resize(dim);

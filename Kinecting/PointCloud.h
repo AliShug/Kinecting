@@ -37,11 +37,11 @@ public:
     ~PointCloud() = default;
 
     // Average position
-    position_t meanPosition();
+    const position_t meanPosition();
     point_t medianPoint();
 
 	// Covariance
-	glm::mat3 calcCov();
+	const glm::mat3 calcCov();
 
 	// Test data sets
 	void loadFromFile(const std::string &file);

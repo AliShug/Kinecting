@@ -59,6 +59,13 @@ void GLScene::Camera::handleInput(const SDL_Event &e) {
             case SDL_SCANCODE_E:
                 eye += moveSpeed*mod*up;
                 break;
+
+            case SDL_SCANCODE_KP_PLUS:
+                setFov(fov.y - 0.02f);
+                break;
+            case SDL_SCANCODE_KP_MINUS:
+                setFov(fov.y + 0.02f);
+                break;
             }
         }
         cout << "Eye " << eye << endl;

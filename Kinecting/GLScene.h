@@ -13,44 +13,63 @@ public:
 		Dim dim;
 		glm::vec2 fov;
 		float aspect;
+        bool shortThrow;
 
 		glm::vec3 eye, dir, side, up;
 		glm::vec2 angle = { M_PI / 2, 0.0f };
 		float moveSpeed = 0.1f;
 		float lookSpeed = 0.02f;
 
+        std::shared_ptr<GLText> overlay = nullptr;
+
 		glm::mat4 calcProjection() {
-			return glm::perspectiveFov(fov.y * float(M_PI/180), float(dim.width), float(dim.height), 0.01f, 1000.0f);
+            float internalFov = fov.y;
+            Dim internalDim = dim;
+            if (shortThrow) {
+                internalFov *= 2;
+                internalDim.height *= 2;
+            }
+
+			return glm::perspectiveFov(internalFov * float(M_PI/180), float(internalDim.width), float(internalDim.height), 0.01f, 1000.0f);
 		}
 
 		glm::mat4 calcView();
 		void handleInput(const SDL_Event &e);
 
+        void set(bool isProjector, Dim newDim, float yFov, glm::vec3 newEye = { 0, 0, 0 }, glm::vec2 newAngle = { M_PI / 2, 0.0f }) {
+            angle = newAngle;
+            eye = newEye;
+            shortThrow = isProjector;
+            setDim(newDim);
+            setFov(yFov);
+        }
+
+        void setDim(const Dim &newDim) {
+            dim = newDim;
+            aspect = float(newDim.width) / float(newDim.height);
+            fov.x = fov.y * aspect;
+
+            Dim internalDim = dim;
+            if (shortThrow) {
+                internalDim.height *= 2;
+                glViewport(0, -dim.height, internalDim.width, internalDim.height);
+            }
+
+            if (overlay) {
+                overlay->onResize(internalDim);
+            }
+        }
+
+        void setFov(float yFov) {
+            fov.y = yFov;
+            fov.x = fov.y * aspect;
+        }
 	};
 
 	GLScene() {}
 	~GLScene() {
 		release();
 	}
-
-	// Setup camera using specified dimensions
-	void setCamera(Dim &viewPort, float yFov) {
-		camera.fov.y = yFov;
-		camera.eye = { 0, 0, 0 };
-
-        setCameraDim(viewPort);
-	}
-
-    void setCameraDim(Dim &viewPort) {
-        camera.dim = viewPort;
-        camera.aspect = float(viewPort.width) / float(viewPort.height);
-        camera.fov.x = camera.fov.y * camera.aspect;
-    }
-
-    void setCameraFov(float yFov) {
-        camera.fov.y = yFov;
-        camera.fov.x = camera.fov.y * camera.aspect;
-    }
 
     // Camera settings save/load
     void readCameraSettings(std::string file);
@@ -63,10 +82,15 @@ public:
 		return obj;
 	}
 
-	auto newTextOverlay() {
-		auto text = std::make_shared<GLText>(this);
-		objects.push_back(text);
-		return text;
+	auto getTextOverlay() {
+        if (!camera.overlay) {
+            camera.overlay = std::make_shared<GLText>(this);
+            camera.setDim(camera.dim); // make sure the overlay's size is updated
+            return camera.overlay;
+        }
+        else {
+            return camera.overlay;
+        }
 	}
 
 	// Render the scene's objects
@@ -76,6 +100,11 @@ public:
 		for (auto obj : objects) {
 			obj->render(vp);
 		}
+
+        if (camera.overlay) {
+            camera.overlay->render(vp);
+            camera.overlay->clear();
+        }
 	}
 
 	// Free resources

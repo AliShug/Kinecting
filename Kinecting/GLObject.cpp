@@ -2,6 +2,10 @@
 #include "GLObject.h"
 #include "GLScene.h"
 
+using namespace glm;
+
+mat4 GLObject::projectorVP;
+
 GLObject::GLObject(const GLScene *parent, const std::string &fragShader, const std::string &vertShader)
 	: _scene(parent) {
 
@@ -84,7 +88,7 @@ void GLObject::genCuboid(float length, float width, float height) {
     // Color (white)
     color_t col(1);
 
-    _mesh.vertices = decltype(_mesh.vertices) {
+    _mesh.vertices = {
         // Bottom
         { p0, down, col, {1, 1} },
         { p1, down, col, {0, 1} },
@@ -122,7 +126,7 @@ void GLObject::genCuboid(float length, float width, float height) {
         { p4, up, col, {1, 0} }
     };
 
-    _mesh.indices = decltype(_mesh.indices) {
+    _mesh.indices = {
         // Bottom
         3 + 4 * 0, 1 + 4 * 0, 0 + 4 * 0,
         3 + 4 * 0, 2 + 4 * 0, 1 + 4 * 0,
@@ -151,7 +155,7 @@ void GLObject::genCuboid(float length, float width, float height) {
     _bound = false;
 }
 
-void GLObject::genLine(const glm::vec3 &start, const glm::vec3 &end, const color_t &col) {
+void GLObject::genLine(const vec3 &start, const vec3 &end, const color_t &col) {
     _mesh.vertices = {
         { start, { 0, 0, 0 }, col, { 0, 0 } },
         { end, {0, 0, 0}, col, {0, 0} }
@@ -183,6 +187,48 @@ void GLObject::genPointCloud(const color_t &col, const PointCloud &pc) {
         _mesh.vertices.push_back({ pt.pos, { 0, 0, 0 }, col, { 0, 0 } });
         _mesh.indices.push_back(i);
     }
+
+    _bound = false;
+}
+
+void GLObject::genFrustrum(float nearDist, float farDist, vec2 fov, const color_t &col, bool half) {
+    // NOTE: this is intended to be used purely for wireframe display
+    renderMode = RenderMode::LINES;
+    _mesh.vertices.clear();
+    _mesh.indices.clear();
+
+    // Points
+    fov *= M_PI / 180.0f;
+    vec2 uv(0.0f);
+    vec3 normal(0.0f);
+    vec2 nearDim = { nearDist*tan(0.5f*fov.x), nearDist*tan(0.5f*fov.y) };
+    vec2 farDim = { farDist*tan(0.5f*fov.x), farDist*tan(0.5f*fov.y) };
+
+    float nearYBase = 0.0f;
+    float farYBase = 0.0f;
+    if (half) {
+        nearYBase = nearDim.y;
+        farYBase = farDim.y;
+    }
+
+   _mesh.vertices.push_back({{-nearDim.x, -nearDim.y + nearYBase, nearDist}, normal, col, uv});
+   _mesh.vertices.push_back({{ nearDim.x, -nearDim.y + nearYBase, nearDist}, normal, col, uv});
+   _mesh.vertices.push_back({{ farDim.x, -farDim.y + farYBase, farDist}, normal, col, uv});
+   _mesh.vertices.push_back({{-farDim.x, -farDim.y + farYBase, farDist}, normal, col, uv});
+   _mesh.vertices.push_back({{-nearDim.x, nearDim.y + nearYBase, nearDist}, normal, col, uv});
+   _mesh.vertices.push_back({{ nearDim.x, nearDim.y + nearYBase, nearDist}, normal, col, uv});
+   _mesh.vertices.push_back({{ farDim.x, farDim.y + farYBase, farDist}, normal, col, uv});
+   _mesh.vertices.push_back({{-farDim.x, farDim.y + farYBase, farDist}, normal, col, uv});
+
+   // Indices
+   _mesh.indices = {
+       // Bottom
+       0, 1, 1, 2, 2, 3, 3, 0,
+       // Top
+       4, 5, 5, 6, 6, 7, 7, 4,
+       // Verticals
+       0, 4, 1, 5, 2, 6, 3, 7
+   };
 
     _bound = false;
 }
@@ -252,7 +298,7 @@ void GLObject::bind() {
     _bound = true;
 }
 
-void GLObject::render(const glm::mat4 &vpMat) {
+void GLObject::render(const mat4 &vpMat) {
     if (_hidden) return;
 	if (!_bound) bind();
 
@@ -279,9 +325,15 @@ void GLObject::render(const glm::mat4 &vpMat) {
 	// Pump in the transformation matrix
 	auto mvpRef = shaders.namedParam("MatMVP");
 	if (mvpRef.valid()) {
-		glm::mat4 mvp = vpMat * getTransform();
+		mat4 mvp = vpMat * getTransform();
 		mvpRef.bindMat4(mvp);
 	}
+
+    auto mvpProjectorRef = shaders.namedParam("MatMVP_projector");
+    if (mvpProjectorRef.valid()) {
+        mat4 mvp = GLObject::projectorVP * getTransform();
+        mvpProjectorRef.bindMat4(mvp);
+    }
 
 	// Points
 	if (renderMode == POINTS) {
@@ -292,9 +344,9 @@ void GLObject::render(const glm::mat4 &vpMat) {
 	glDrawElements(renderMode, _mesh.indices.size(), GL_UNSIGNED_INT, NULL);
 }
 
-void GLObject::applyTransform(const glm::mat4 &mat) {
+void GLObject::applyTransform(const mat4 &mat) {
 	for (auto &vert : _mesh.vertices) {
-		glm::vec4 pos4(vert.pos, 1.0f);
+		vec4 pos4(vert.pos, 1.0f);
 		pos4 = mat * pos4;
 		vert.pos = pos4.xyz;
 	}
@@ -302,7 +354,7 @@ void GLObject::applyTransform(const glm::mat4 &mat) {
 	bind();
 }
 
-void GLObject::applyTransform(const glm::mat3 &mat) {
+void GLObject::applyTransform(const mat3 &mat) {
 	for (auto &vert : _mesh.vertices) {
 		vert.pos = mat * vert.pos;
 	}

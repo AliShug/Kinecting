@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "PointCloud.h"
 
+using namespace glm;
+
 void PointCloud::generateFromImage(NormDepthImage &source, float camXZ, float camYZ) {
     // Maketh space
 	cloud.clear();
@@ -84,7 +86,7 @@ void PointCloud::innerEdge() {
     }
 }
 
-PointCloud::position_t PointCloud::meanPosition() {
+const PointCloud::position_t PointCloud::meanPosition() {
 	if (cloud.empty()) return position_t(0.0f);
 
     position_t sum(0);
@@ -124,13 +126,13 @@ PointCloud::point_t PointCloud::medianPoint() {
     return pt;
 }
 
-glm::mat3 PointCloud::calcCov() {
-	if (cloud.size() <= 1) return glm::mat3();
+const mat3 PointCloud::calcCov() {
+	if (cloud.size() <= 1) return mat3();
 	position_t mean = meanPosition();
 
-	glm::mat3 cov;
+	mat3 cov;
 	for (auto p : cloud) {
-		cov += glm::outerProduct(p.pos - mean, p.pos - mean) * 1000.0f;
+		cov += outerProduct(p.pos - mean, p.pos - mean) * 1000.0f;
 	}
 	cov *= 1.0f / (cloud.size() - 1);
 
