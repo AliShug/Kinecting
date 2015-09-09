@@ -3,17 +3,18 @@
 #include "Util.h"
 
 // Convenience class for performing image operations
-// Stores vec3 normals and floating-point depth
+// Stores normals and floating-point depth in a packed, SIMD-compatible vec4 format
 class NormDepthImage {
 public:
     // Internal types
     typedef glm::vec3 normal_t;
+    typedef glm::vec3 position_t;
     typedef glm::simdVec4 store_t;
     typedef std::unique_ptr<normal_t> normal_p;
-    typedef std::unique_ptr<float> depth_p;
     typedef std::unique_ptr<uint32_t> fmt_p;
     typedef std::unique_ptr<char> mask_p;
     typedef std::unique_ptr<store_t, aligned_free> store_p;
+    typedef std::unique_ptr<float> stress_p;
 
     enum Mask {
         NONE = 0,
@@ -24,8 +25,8 @@ public:
     NormDepthImage(Dim size)
         : _data(aligned_malloc<store_t>(size.area(), 16))
         , _workingData(aligned_malloc<store_t>(size.area(), 16))
-        //, _depth(new float[size.area()])
-        //, _workingDepth(new float[size.area()])
+        , _stress(new float[size.area()])
+        , _position(aligned_malloc<store_t>(size.area(), 16))
         , _mask(new char[size.area()])
         , dim(size) {
         
@@ -104,6 +105,12 @@ public:
     void threshold_meanDepthBlur(int radius, float thresh);
 
 
+    void masked_normalProjectionDepthSmooth(int radius);
+
+    // Performs a masked stress-map calculation
+    void masked_stressMap();
+
+
     // Performs a thresholded flood fill
     void threshold_normalFlood(Pt2i seed, float thresh, float dThresh);
 
@@ -111,9 +118,8 @@ public:
     // Quick-access methods
     inline int ptInd(const Pt2i &pt) { return pt.y*dim.width + pt.x; }
 	inline char getMask(const Pt2i &pt) { return _mask.get()[ptInd(pt)]; }
-	inline float getDepth(const Pt2i &pt) {
-		return glm::vec4_cast(_data.get()[ptInd(pt)]).w;
-	}
+	inline float getDepth(const Pt2i &pt) { return glm::vec4_cast(_data.get()[ptInd(pt)]).w;	}
+    inline float getStress(const Pt2i &pt) { return _stress.get()[ptInd(pt)]; }
 
     // Publicly accessible members
     Dim dim;
@@ -134,7 +140,8 @@ protected:
     store_p _data;
     store_p _workingData;
     mask_p _mask;
-
+    stress_p _stress;
+    store_p _position;
 
     // Flood fill structure
     struct _QLinearFill {

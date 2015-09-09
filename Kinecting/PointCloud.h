@@ -15,6 +15,7 @@ public:
         normal_t norm;
 		color_t col = color_t(0.5f, 0.5f, 1.0f);
         char adj = AJ_NONE;
+        float stress = 0.0f;
     };
 
     enum adjacency {

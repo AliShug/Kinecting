@@ -21,6 +21,10 @@ public:
     // Window size
     cameraInfo view;
 
+    // Multiple displays
+    static int numDisplays;
+    static std::vector<SDL_Rect> displays;
+
     // Global init (SDL, OpenGL etc)
     static void InitGUI() {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -42,6 +46,14 @@ public:
 
         // SDL hints - prevent the fullscreen window from hiding itself
         SDL_SetHintWithPriority(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0", SDL_HintPriority::SDL_HINT_OVERRIDE);
+
+        // Multiple monitors
+        numDisplays = SDL_GetNumVideoDisplays();
+        for (int i = 0; i < numDisplays; i++) {
+            SDL_Rect screen;
+            SDL_GetDisplayBounds(i, &screen);
+            displays.push_back(screen);
+        }
     }
 
     // Global exit (cleanup)
@@ -56,12 +68,7 @@ public:
     virtual void update() {}
 
 	// Render the 3D view
-	virtual void render() {
-		activate();
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		scene.render();
-		SDL_GL_SwapWindow(_window);
-	}
+    virtual void render();
 
     virtual void handleEvent(const SDL_Event &e);
 
@@ -71,6 +78,13 @@ public:
 
     void setFullscreen(bool fs);
     void toggleFullscreen();
+
+    // Moves to the next monitor
+    void nextMonitor() {
+        _displayIndex = (_displayIndex + 1) % numDisplays;
+        SDL_Rect display = displays[_displayIndex];
+        SDL_SetWindowPosition(_window, display.x, display.y);
+    }
 
 	// Activates the window's rendering context
 	void activate() {
@@ -87,6 +101,7 @@ protected:
 
     // Members
     int _windowID = -1;
+    int _displayIndex = 0;
     //Window focus
     bool _mouseFocus;
     bool _keyboardFocus;

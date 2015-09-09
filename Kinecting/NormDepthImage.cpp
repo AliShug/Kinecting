@@ -1,15 +1,17 @@
 #include "stdafx.h"
 #include "NormDepthImage.h"
 
+using namespace glm;
+using namespace std;
+
 void NormDepthImage::calcNormals(float camXZ, float camYZ) {
-    using namespace glm;
     Pt2i pt;
 	auto dd = _data.get();
-	auto wd = _workingData.get();
+	auto posd = _position.get();
 	store_t pix;
 
     // First pass calculates the camera-space position of each depth pixel,
-	// storing it in the working buffer
+	// storing it in the position buffer for later use
     for (pt.y = 0; pt.y < dim.height; pt.y++) {
         for (pt.x = 0; pt.x < dim.width; pt.x++) {
             vec3 pos;
@@ -19,7 +21,7 @@ void NormDepthImage::calcNormals(float camXZ, float camYZ) {
             pos.x = ((float)pt.x / (float)dim.width - 0.5f) * 2 * pos.z * camXZ;
             pos.y = ((float)pt.y / (float)dim.height - 0.5f) * 2 * pos.z * camYZ;
 
-            wd[ptInd(pt)] = store_t(pos, pos.z);
+            posd[ptInd(pt)] = store_t(pos, pos.z);
         }
     }
 
@@ -27,16 +29,16 @@ void NormDepthImage::calcNormals(float camXZ, float camYZ) {
     for (pt.y = 0; pt.y < dim.height; pt.y++) {
         for (pt.x = 0; pt.x < dim.width; pt.x++) {
             vec3 norm, a, b;
-			vec3 pos = vec4_cast(wd[ptInd(pt)]).xyz;
+			vec3 pos = vec4_cast(posd[ptInd(pt)]).xyz;
 
             // dFdx
             Pt2i x1, x2;
             vec3 p1, p2;
             x1 = pt.offs(-1, 0);
             x2 = pt.offs( 1, 0);
-            if (dim.contains(x1))  p1 = vec4_cast(wd[ptInd(x1)]).xyz;
+            if (dim.contains(x1))  p1 = vec4_cast(posd[ptInd(x1)]).xyz;
             else                   p1 = pos;
-            if (dim.contains(x2))  p2 = vec4_cast(wd[ptInd(x2)]).xyz;
+            if (dim.contains(x2))  p2 = vec4_cast(posd[ptInd(x2)]).xyz;
             else                   p2 = pos;
 
             // ... a = ?
@@ -45,9 +47,9 @@ void NormDepthImage::calcNormals(float camXZ, float camYZ) {
             // dFdy
             x1 = pt.offs(0, -1);
             x2 = pt.offs(0,  1);
-            if (dim.contains(x1))  p1 = vec4_cast(wd[ptInd(x1)]).xyz;
+            if (dim.contains(x1))  p1 = vec4_cast(posd[ptInd(x1)]).xyz;
             else                   p1 = pos;
-            if (dim.contains(x2))  p2 = vec4_cast(wd[ptInd(x2)]).xyz;
+            if (dim.contains(x2))  p2 = vec4_cast(posd[ptInd(x2)]).xyz;
             else                   p2 = pos;
 
             // ... b = ?
@@ -181,7 +183,6 @@ void NormDepthImage::threshold_gaussNormalBlur(const int radius, float thresh, f
 }
 
 void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thresh, float dThresh) {
-    using namespace glm;
     Pt2i pt;
 
     // Gaussian values pre-distributed into vector of vector-types for fast SIMD multiplication
@@ -341,7 +342,7 @@ void NormDepthImage::OPT_threshold_gaussNormalBlur(const int radius, float thres
 
 void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
 	throw "Unsupported operation";
-    /*using namespace glm;
+    /*
     Pt2i pt;
     
     // Blur along X
@@ -425,7 +426,7 @@ void NormDepthImage::threshold_meanNormalBlur(int radius, float thresh) {
 
 void NormDepthImage::threshold_meanDepthBlur(int radius, float thresh) {
 	throw "Unsupported operation";
-    /*using namespace glm;
+    /*
 
     Pt2i pt;
     
@@ -514,6 +515,99 @@ void NormDepthImage::threshold_normalFlood(Pt2i seed, float thresh, float dThres
     }
     else {
         std::cerr << "Flood-fill seed outside range" << std::endl;
+    }
+}
+
+// *****************************************************************************************************************
+// ** Stress-map generation
+
+void NormDepthImage::masked_normalProjectionDepthSmooth(int radius) {
+    Pt2i pt;
+    auto dd = _data.get();
+    auto pos = _position.get();
+
+    vector<vec3> points;
+    points.reserve(radius * 4);
+
+    for (pt.y = 0; pt.y < dim.height; pt.y++) {
+        for (pt.x = 0; pt.x < dim.width; pt.x++) {
+            auto data = dd[ptInd(pt)];
+            vec3 normal = *reinterpret_cast<vec3*>(&data);
+            auto pdata = pos[ptInd(pt)];
+            vec3 p = *reinterpret_cast<vec3*>(&pdata);
+            // WORKING HERE...
+        }
+    }
+}
+
+void NormDepthImage::masked_stressMap() {
+    Pt2i pt;
+    auto n = _data.get();
+    auto stress = _stress.get();
+    auto pos = _position.get();
+    store_t pix;
+
+    int offsetDist = 12;
+
+    for (pt.y = 0; pt.y < dim.height; pt.y++) {
+        for (pt.x = 0; pt.x < dim.width; pt.x++) {
+            if (getMask(pt) != PICKED) continue;
+
+            // Attempt 1 - difference in adjacent normals
+            /*float diff = 0;
+            simdVec4 myNormal = n[ptInd(pt)];
+            myNormal.Data.m128_f32[3] = 0.0f;
+            simdVec4 normals[4];
+
+            Pt2i offsPt = pt.offs(0, 1);
+            normals[0] = (offsPt.y < dim.height && getMask(offsPt) == PICKED) ? n[ptInd(offsPt)] : myNormal;
+            offsPt = pt.offs(0, -1);
+            normals[1] = (offsPt.y >= 0 && getMask(offsPt) == PICKED) ? n[ptInd(offsPt)] : myNormal;
+            offsPt = pt.offs(-1, 0);
+            normals[2] = (offsPt.x >= 0 && getMask(offsPt) == PICKED) ? n[ptInd(offsPt)] : myNormal;
+            offsPt = pt.offs(1, 0);
+            normals[3] = (offsPt.x < dim.width && getMask(offsPt) == PICKED) ? n[ptInd(offsPt)] : myNormal;
+
+            for (int i = 0; i < 4; i++) {
+                normals[i].Data.m128_f32[3] = 0.0f;
+                // dirty, dirty pointer stuff
+                vec3 a = *reinterpret_cast<vec3*>(&myNormal.Data);
+                vec3 b = *reinterpret_cast<vec3*>(&normals[i].Data);
+                diff += angle(normalize(a), normalize(b));
+            }
+
+            stress[ptInd(pt)] = diff*diff * 5.0f;*/
+
+            // Attempt 2 - difference in normals for offset depth
+            auto here = pos[ptInd(pt)];
+            Pt2i offsPt = pt.offs(0, offsetDist);
+            auto data0 = (offsPt.y < dim.height && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+            offsPt = pt.offs(0, -offsetDist);
+            auto data1 = (offsPt.y >= 0 && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+            offsPt = pt.offs(-offsetDist, 0);
+            auto data2 = (offsPt.x >= 0 && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+            offsPt = pt.offs(offsetDist, 0);
+            auto data3 = (offsPt.x < dim.width && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+
+            vec3 l, r, u, d, m, a, b, n1, n2;
+            m = *reinterpret_cast<vec3*>(&here);
+            u = *reinterpret_cast<vec3*>(&data0);
+            d = *reinterpret_cast<vec3*>(&data1);
+            l = *reinterpret_cast<vec3*>(&data2);
+            r = *reinterpret_cast<vec3*>(&data3);
+
+            // Normal 1 left-up
+            a = m - l;
+            b = m - u;
+            n1 = normalize(cross(normalize(a), normalize(b)));
+
+            // Normal 2 right-down
+            a = m - r;
+            b = m - d;
+            n2 = normalize(cross(normalize(a), normalize(b)));
+
+            stress[ptInd(pt)] = angle(n1, n2);
+        }
     }
 }
 

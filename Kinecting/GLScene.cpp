@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "GLScene.h"
+#include "GLWindow.h"
 
 using namespace std;
 using namespace glm;
@@ -139,5 +140,18 @@ void GLScene::saveCameraSettings(string file) {
         out << camera.fov.x << "," << camera.fov.y << endl;
 
         out.close();
+    }
+}
+
+void GLScene::render() {
+    mat4 vp = camera.calcProjection() * camera.calcView();
+
+    for (auto obj : objects) {
+        obj->render(vp);
+    }
+
+    if (camera.overlay) {
+        camera.overlay->render(vp);
+        camera.overlay->clear();
     }
 }

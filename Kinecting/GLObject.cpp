@@ -184,7 +184,7 @@ void GLObject::genPointCloud(const color_t &col, const PointCloud &pc) {
 
     for (int i = 0; i < pc.cloud.size(); i++) {
         auto pt = pc.cloud[i];
-        _mesh.vertices.push_back({ pt.pos, { 0, 0, 0 }, col, { 0, 0 } });
+        _mesh.vertices.push_back({ pt.pos, { 0, 0, 0 }, col * pt.stress, { 0, 0 } });
         _mesh.indices.push_back(i);
     }
 

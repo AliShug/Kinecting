@@ -47,6 +47,7 @@
 #include <glm/gtx/simd_vec4.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/io.hpp>
+#include <glm/gtx/vector_angle.hpp>
 
 #include <FreeImage.h>
 

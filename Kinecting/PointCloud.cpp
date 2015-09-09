@@ -28,6 +28,9 @@ void PointCloud::generateFromImage(NormDepthImage &source, float camXZ, float ca
 					newPoint.pos.x = (float(pt.x) / float(source.dim.width) - 0.5f) * 2 * newPoint.pos.z * camXZ;
 					newPoint.pos.y = ((1.0f - float(pt.y) / float(source.dim.height)) - 0.5f) * 2 * newPoint.pos.z * camYZ;
 
+                    // Grab the stress information
+                    newPoint.stress = source.getStress(pt);
+
                     // Adjacency information
                     int ajCount = 0;
                     if (source.getMask(pt.offs(-1, 0)) == NormDepthImage::PICKED) {

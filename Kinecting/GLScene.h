@@ -94,18 +94,7 @@ public:
 	}
 
 	// Render the scene's objects
-	void render() {
-        glm::mat4 vp = camera.calcProjection() * camera.calcView();
-
-		for (auto obj : objects) {
-			obj->render(vp);
-		}
-
-        if (camera.overlay) {
-            camera.overlay->render(vp);
-            camera.overlay->clear();
-        }
-	}
+    void render();
 
 	// Free resources
 	void release() {

@@ -4,6 +4,9 @@
 
 using namespace std;
 
+int GLWindow::numDisplays = 0;
+vector<SDL_Rect> GLWindow::displays;
+
 GLWindow::GLWindow() {}
 
 GLWindow::~GLWindow() {
@@ -29,6 +32,7 @@ void GLWindow::showWindow(string name, Dim &size) {
     }
 
     _windowID = SDL_GetWindowID(_window);
+    _displayIndex = SDL_GetWindowDisplayIndex(_window);
     _mouseFocus = true;
     _keyboardFocus = true;
 
@@ -145,8 +149,8 @@ void GLWindow::handleEvent(const SDL_Event &e) {
 
             // Save/restore camera settings
         case SDL_SCANCODE_V:
-            scene.saveCameraSettings("camera_new.cfg");
-            message.str("Saved camera settings to 'camera_new.cfg'");
+            scene.saveCameraSettings("camera.cfg");
+            message.str("Saved camera settings to 'camera.cfg'");
             break;
         case SDL_SCANCODE_B:
             scene.readCameraSettings("camera.cfg");
@@ -205,4 +209,13 @@ void GLWindow::setFullscreen(bool fs) {
 
 void GLWindow::toggleFullscreen() {
     setFullscreen(!_fullscreen);
+}
+
+void GLWindow::render() {
+    activate();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    scene.getTextOverlay()->drawText({ 20, 20 }, message.str());
+    scene.render();
+    SDL_GL_SwapWindow(_window);
 }

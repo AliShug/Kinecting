@@ -132,11 +132,14 @@ int main(int argc, char *args[]) {
         // Create the GL contexts for separate windows (displaying the windows)
         dispWindow.showWindow("Kinecting - freelook", window);
         projectorWindow.showWindow("Kinecting - projector", window);
+        projectorWindow.nextMonitor();
+        projectorWindow.setFullscreen(true);
 
         // Setup on free-look context (camera)
         dispWindow.activate();
 		auto &scene = dispWindow.scene;
 		scene.camera.set(false, window, 60.0f);
+        scene.readCameraSettings("camera.cfg");
         //
 
         // Setup on projector context (camera)
@@ -144,6 +147,7 @@ int main(int argc, char *args[]) {
         projectorWindow.activate();
         auto &projScene = projectorWindow.scene;
         projScene.camera.set(true, window, projectorFovY);
+        projScene.readCameraSettings("projector.cfg");
         //
 
 		// Storage for raw camera output
@@ -305,17 +309,13 @@ int main(int argc, char *args[]) {
 				// Smooth depth
 				//img.threshold_meanDepthBlur(4, 0.001f);
 
-				// Calculate normals
+				// Smooth and flood-fill the normals
 				img.calcNormals(kinectXZ, kinectYZ);
-
-				// Blur preprocess
 				img.OPT_threshold_gaussNormalBlur(12, 0.8f, 0.01f);
-				//img.threshold_meanNormalBlur(4, 0.28f);
-
-				// Flood-fill
 				img.threshold_normalFlood(trackPt, 0.1f, 0.01f);
 
-                // Now we can generate a point-cloud
+                // Now we can generate the stress map and normals
+                img.masked_stressMap(kinectXZ, kinectYZ);
                 pointCloud.generateFromImage(img, kinectXZ, kinectYZ);
                 //pointCloud.innerEdge();
 			}
