@@ -521,29 +521,60 @@ void NormDepthImage::threshold_normalFlood(Pt2i seed, float thresh, float dThres
 // *****************************************************************************************************************
 // ** Stress-map generation
 
+void NormDepthImage::masked_holeFill() {
+    const int range = 8;
+    Pt2i pt;
+    auto mask = _mask.get();
+    auto pos = _position.get();
+
+    for (pt.y = 0; pt.y < dim.height; pt.y++) {
+        for (pt.x = 0; pt.x < dim.width - range; pt.x++) {
+            if (mask[ptInd(pt)] == PICKED && mask[ptInd(pt) + 1] != PICKED) {
+                int spaces = 1;
+                auto fillVal = pos[ptInd(pt)];
+                for (int i = 2; i < range; i++) {
+                    if (mask[ptInd(pt) + i] == PICKED) {
+                        // Back-fill
+                        for (int j = 0; j < spaces; j++) {
+                            mask[ptInd(pt) + i - 1 - j] = PICKED;
+                            pos[ptInd(pt) + i - 1 - j] = fillVal;
+                        }
+                        // ... and done
+                        break;
+                    }
+                    else {
+                        spaces++;
+                    }
+                }
+            }
+        }
+    }
+}
+
 void NormDepthImage::masked_laplaceSmooth(int iterations) {
     Pt2i pt;
     auto dd = _data.get();
+    auto wd = _workingData.get();
     auto pos = _position.get();
 
-    vector<vec3> points;
-    points.reserve(4);
-
+    auto readData = wd;
+    auto writeData = pos;
     for (int i = 0; i < iterations; i++) {
+        swap(readData, writeData);
         for (pt.y = 0; pt.y < dim.height; pt.y++) {
             for (pt.x = 0; pt.x < dim.width; pt.x++) {
-                auto pdata = pos[ptInd(pt)];
-                vec3 p = *reinterpret_cast<vec3*>(&pdata);
+                auto pdata = readData[ptInd(pt)];
+                vec3 p = vec4_cast(pdata).xyz;
                 
-                auto here = pos[ptInd(pt)];
+                auto here = readData[ptInd(pt)];
                 Pt2i offsPt = pt.offs(0, 1);
-                auto data0 = (offsPt.y < dim.height && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+                auto data0 = (offsPt.y < dim.height && getMask(offsPt) == PICKED) ? readData[ptInd(offsPt)] : here;
                 offsPt = pt.offs(0, -1);
-                auto data1 = (offsPt.y >= 0 && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+                auto data1 = (offsPt.y >= 0 && getMask(offsPt) == PICKED) ? readData[ptInd(offsPt)] : here;
                 offsPt = pt.offs(-1, 0);
-                auto data2 = (offsPt.x >= 0 && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+                auto data2 = (offsPt.x >= 0 && getMask(offsPt) == PICKED) ? readData[ptInd(offsPt)] : here;
                 offsPt = pt.offs(1, 0);
-                auto data3 = (offsPt.x < dim.width && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+                auto data3 = (offsPt.x < dim.width && getMask(offsPt) == PICKED) ? readData[ptInd(offsPt)] : here;
 
                 vec3 l, r, u, d, m;
                 m = *reinterpret_cast<vec3*>(&here);
@@ -555,12 +586,15 @@ void NormDepthImage::masked_laplaceSmooth(int iterations) {
                 vec3 deltaP = 0.25f * (u + d + l + r) - m;
                 vec3 newPoint = m + 0.5f * deltaP;
 
-                pos[ptInd(pt)] = store_t(newPoint, newPoint.z);
-                auto data = dd[ptInd(pt)];
-                data.Data.m128_f32[3] = newPoint.z;
-                //dd[ptInd(pt)] = data;
-                pos[ptInd(pt)] = data;
+                writeData[ptInd(pt)] = store_t(newPoint, newPoint.z);
             }
+        }
+    }
+
+    // Copy the working data to the position storage
+    for (pt.y = 0; pt.y < dim.height; pt.y++) {
+        for (pt.x = 0; pt.x < dim.width; pt.x++) {
+            pos[ptInd(pt)] = writeData[ptInd(pt)];
         }
     }
 }
@@ -572,38 +606,13 @@ void NormDepthImage::masked_stressMap() {
     auto pos = _workingData.get();
     store_t pix;
 
-    int offsetDist = 12;
+    int offsetDist = 6;
 
     for (pt.y = 0; pt.y < dim.height; pt.y++) {
         for (pt.x = 0; pt.x < dim.width; pt.x++) {
             if (getMask(pt) != PICKED) continue;
 
-            // Attempt 1 - difference in adjacent normals
-            /*float diff = 0;
-            simdVec4 myNormal = n[ptInd(pt)];
-            myNormal.Data.m128_f32[3] = 0.0f;
-            simdVec4 normals[4];
-
-            Pt2i offsPt = pt.offs(0, 1);
-            normals[0] = (offsPt.y < dim.height && getMask(offsPt) == PICKED) ? n[ptInd(offsPt)] : myNormal;
-            offsPt = pt.offs(0, -1);
-            normals[1] = (offsPt.y >= 0 && getMask(offsPt) == PICKED) ? n[ptInd(offsPt)] : myNormal;
-            offsPt = pt.offs(-1, 0);
-            normals[2] = (offsPt.x >= 0 && getMask(offsPt) == PICKED) ? n[ptInd(offsPt)] : myNormal;
-            offsPt = pt.offs(1, 0);
-            normals[3] = (offsPt.x < dim.width && getMask(offsPt) == PICKED) ? n[ptInd(offsPt)] : myNormal;
-
-            for (int i = 0; i < 4; i++) {
-                normals[i].Data.m128_f32[3] = 0.0f;
-                // dirty, dirty pointer stuff
-                vec3 a = *reinterpret_cast<vec3*>(&myNormal.Data);
-                vec3 b = *reinterpret_cast<vec3*>(&normals[i].Data);
-                diff += angle(normalize(a), normalize(b));
-            }
-
-            stress[ptInd(pt)] = diff*diff * 5.0f;*/
-
-            // Attempt 2 - difference in normals for offset depth
+            // Angle between (newly calculated) normals using offset
             auto here = pos[ptInd(pt)];
             Pt2i offsPt = pt.offs(0, offsetDist);
             auto data0 = (offsPt.y < dim.height && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
@@ -615,11 +624,11 @@ void NormDepthImage::masked_stressMap() {
             auto data3 = (offsPt.x < dim.width && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
 
             vec3 l, r, u, d, m, a, b, n1, n2;
-            m = *reinterpret_cast<vec3*>(&here);
-            u = *reinterpret_cast<vec3*>(&data0);
-            d = *reinterpret_cast<vec3*>(&data1);
-            l = *reinterpret_cast<vec3*>(&data2);
-            r = *reinterpret_cast<vec3*>(&data3);
+            m = vec4_cast(here).xyz;
+            u = vec4_cast(data0).xyz;
+            d = vec4_cast(data1).xyz;
+            l = vec4_cast(data2).xyz;
+            r = vec4_cast(data3).xyz;
 
             // Normal 1 left-up
             a = m - l;
@@ -631,7 +640,8 @@ void NormDepthImage::masked_stressMap() {
             b = m - d;
             n2 = normalize(cross(normalize(a), normalize(b)));
 
-            stress[ptInd(pt)] = angle(n1, n2);
+            // Angle between the normals
+            stress[ptInd(pt)] = pow(angle(n1, n2), 2)*30.0f;
         }
     }
 }

@@ -105,6 +105,7 @@ public:
     void threshold_meanDepthBlur(int radius, float thresh);
 
 
+    void masked_holeFill();
     void masked_laplaceSmooth(int iterations);
 
     // Performs a masked stress-map calculation
