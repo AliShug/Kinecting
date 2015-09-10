@@ -26,7 +26,7 @@ public:
         : _data(aligned_malloc<store_t>(size.area(), 16))
         , _workingData(aligned_malloc<store_t>(size.area(), 16))
         , _stress(new float[size.area()])
-        , _position(aligned_malloc<store_t>(size.area(), 16))
+        //, _position(aligned_malloc<store_t>(size.area(), 16))
         , _mask(new char[size.area()])
         , dim(size) {
         
@@ -120,7 +120,7 @@ public:
 	inline char getMask(const Pt2i &pt) { return _mask.get()[ptInd(pt)]; }
 	inline float getDepth(const Pt2i &pt) { return glm::vec4_cast(_data.get()[ptInd(pt)]).w;	}
     inline float getStress(const Pt2i &pt) { return _stress.get()[ptInd(pt)]; }
-    inline glm::vec3 getPos(const Pt2i &pt) { return glm::vec4_cast(_position.get()[ptInd(pt)]).xyz; }
+    //inline glm::vec3 getPos(const Pt2i &pt) { return glm::vec4_cast(_position.get()[ptInd(pt)]).xyz; }
 
     // Publicly accessible members
     Dim dim;
@@ -142,7 +142,7 @@ protected:
     store_p _workingData;
     mask_p _mask;
     stress_p _stress;
-    store_p _position;
+    //store_p _position;
 
     // Flood fill structure
     struct _QLinearFill {

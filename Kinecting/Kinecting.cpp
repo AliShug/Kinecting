@@ -316,8 +316,8 @@ int main(int argc, char *args[]) {
 
                 // Now we can generate the stress map and normals
                 //img.masked_laplaceSmooth(1);
-                img.masked_stressMap();
-                pointCloud.generateFromImage(img);
+                //img.masked_stressMap();
+                pointCloud.generateFromImage(img, kinectXZ, kinectYZ);
                 //pointCloud.innerEdge();
 			}
 

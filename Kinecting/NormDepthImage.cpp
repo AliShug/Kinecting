@@ -7,7 +7,7 @@ using namespace std;
 void NormDepthImage::calcNormals(float camXZ, float camYZ) {
     Pt2i pt;
 	auto dd = _data.get();
-	auto posd = _position.get();
+	auto posd = _workingData.get();
 	store_t pix;
 
     // First pass calculates the camera-space position of each depth pixel,
@@ -522,7 +522,7 @@ void NormDepthImage::threshold_normalFlood(Pt2i seed, float thresh, float dThres
 // ** Stress-map generation
 
 void NormDepthImage::masked_laplaceSmooth(int iterations) {
-    Pt2i pt;
+    /*Pt2i pt;
     auto dd = _data.get();
     auto pos = _position.get();
 
@@ -561,14 +561,14 @@ void NormDepthImage::masked_laplaceSmooth(int iterations) {
                 dd[ptInd(pt)] = data;
             }
         }
-    }
+    }*/
 }
 
 void NormDepthImage::masked_stressMap() {
     Pt2i pt;
     auto n = _data.get();
     auto stress = _stress.get();
-    auto pos = _position.get();
+    auto pos = _workingData.get();
     store_t pix;
 
     int offsetDist = 12;
