@@ -521,21 +521,45 @@ void NormDepthImage::threshold_normalFlood(Pt2i seed, float thresh, float dThres
 // *****************************************************************************************************************
 // ** Stress-map generation
 
-void NormDepthImage::masked_normalProjectionDepthSmooth(int radius) {
+void NormDepthImage::masked_laplaceSmooth(int iterations) {
     Pt2i pt;
     auto dd = _data.get();
     auto pos = _position.get();
 
     vector<vec3> points;
-    points.reserve(radius * 4);
+    points.reserve(4);
 
-    for (pt.y = 0; pt.y < dim.height; pt.y++) {
-        for (pt.x = 0; pt.x < dim.width; pt.x++) {
-            auto data = dd[ptInd(pt)];
-            vec3 normal = *reinterpret_cast<vec3*>(&data);
-            auto pdata = pos[ptInd(pt)];
-            vec3 p = *reinterpret_cast<vec3*>(&pdata);
-            // WORKING HERE...
+    for (int i = 0; i < iterations; i++) {
+        for (pt.y = 0; pt.y < dim.height; pt.y++) {
+            for (pt.x = 0; pt.x < dim.width; pt.x++) {
+                auto pdata = pos[ptInd(pt)];
+                vec3 p = *reinterpret_cast<vec3*>(&pdata);
+                
+                auto here = pos[ptInd(pt)];
+                Pt2i offsPt = pt.offs(0, 1);
+                auto data0 = (offsPt.y < dim.height && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+                offsPt = pt.offs(0, -1);
+                auto data1 = (offsPt.y >= 0 && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+                offsPt = pt.offs(-1, 0);
+                auto data2 = (offsPt.x >= 0 && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+                offsPt = pt.offs(1, 0);
+                auto data3 = (offsPt.x < dim.width && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
+
+                vec3 l, r, u, d, m;
+                m = *reinterpret_cast<vec3*>(&here);
+                u = *reinterpret_cast<vec3*>(&data0);
+                d = *reinterpret_cast<vec3*>(&data1);
+                l = *reinterpret_cast<vec3*>(&data2);
+                r = *reinterpret_cast<vec3*>(&data3);
+
+                vec3 deltaP = 0.25f * (u + d + l + r) - m;
+                vec3 newPoint = m + 0.5f * deltaP;
+
+                pos[ptInd(pt)] = store_t(newPoint, newPoint.z);
+                auto data = dd[ptInd(pt)];
+                data.Data.m128_f32[3] = newPoint.z;
+                dd[ptInd(pt)] = data;
+            }
         }
     }
 }

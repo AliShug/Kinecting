@@ -3,7 +3,7 @@
 
 using namespace glm;
 
-void PointCloud::generateFromImage(NormDepthImage &source, float camXZ, float camYZ) {
+void PointCloud::generateFromImage(NormDepthImage &source) {
     // Maketh space
 	cloud.clear();
     cloud_indices.clear();
@@ -19,15 +19,9 @@ void PointCloud::generateFromImage(NormDepthImage &source, float camXZ, float ca
         for (pt.x = 0; pt.x < source.dim.width; pt.x++) {
             if (source.getMask(pt) == NormDepthImage::PICKED) {
                 point_t newPoint;
-                newPoint.pos.z = source.getDepth(pt);
+                newPoint.pos = source.getPos(pt);
 
 				if (newPoint.pos.z > 0.5f && newPoint.pos.z < 4.5f) {
-					// Transform to camera space
-                    newPoint.screen.x = pt.x;
-					newPoint.screen.y = pt.y;
-					newPoint.pos.x = (float(pt.x) / float(source.dim.width) - 0.5f) * 2 * newPoint.pos.z * camXZ;
-					newPoint.pos.y = ((1.0f - float(pt.y) / float(source.dim.height)) - 0.5f) * 2 * newPoint.pos.z * camYZ;
-
                     // Grab the stress information
                     newPoint.stress = source.getStress(pt);
 

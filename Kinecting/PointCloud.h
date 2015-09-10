@@ -30,7 +30,7 @@ public:
 	typedef std::vector<point_t> cloud_t;
 
     // Generate a point cloud from an (optionally) masked normal/depth image
-    void generateFromImage(NormDepthImage &source, float camXZ, float camYZ);
+    void generateFromImage(NormDepthImage &source);
 
     void innerEdge();
 

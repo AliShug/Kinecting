@@ -105,7 +105,7 @@ public:
     void threshold_meanDepthBlur(int radius, float thresh);
 
 
-    void masked_normalProjectionDepthSmooth(int radius);
+    void masked_laplaceSmooth(int iterations);
 
     // Performs a masked stress-map calculation
     void masked_stressMap();
@@ -120,6 +120,7 @@ public:
 	inline char getMask(const Pt2i &pt) { return _mask.get()[ptInd(pt)]; }
 	inline float getDepth(const Pt2i &pt) { return glm::vec4_cast(_data.get()[ptInd(pt)]).w;	}
     inline float getStress(const Pt2i &pt) { return _stress.get()[ptInd(pt)]; }
+    inline glm::vec3 getPos(const Pt2i &pt) { return glm::vec4_cast(_position.get()[ptInd(pt)]).xyz; }
 
     // Publicly accessible members
     Dim dim;
@@ -129,10 +130,10 @@ protected:
     // Formatting utility function
     inline uint32_t formatPixel(store_t &pix) {
         uint32_t r, g, b;
-		auto castPix = glm::vec4_cast(pix);
-        r = uint32_t((castPix.x + 1) * 127.5f);
-        g = uint32_t((castPix.y + 1) * 127.5f);
-        b = uint32_t((castPix.z * 255));
+		glm::vec4 castPix = glm::vec4_cast(pix);
+        r = static_cast<uint32_t>((castPix.x + 1) * 127.5f);
+        g = static_cast<uint32_t>((castPix.y + 1) * 127.5f);
+        b = static_cast<uint32_t>((castPix.z * 255));
         return 0xFF000000 | r << 16 | g << 8 | b;
     }
 

@@ -315,8 +315,9 @@ int main(int argc, char *args[]) {
 				img.threshold_normalFlood(trackPt, 0.1f, 0.01f);
 
                 // Now we can generate the stress map and normals
-                img.masked_stressMap(kinectXZ, kinectYZ);
-                pointCloud.generateFromImage(img, kinectXZ, kinectYZ);
+                //img.masked_laplaceSmooth(1);
+                img.masked_stressMap();
+                pointCloud.generateFromImage(img);
                 //pointCloud.innerEdge();
 			}
 
