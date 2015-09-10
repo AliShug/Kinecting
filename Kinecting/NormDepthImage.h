@@ -25,8 +25,8 @@ public:
     NormDepthImage(Dim size)
         : _data(aligned_malloc<store_t>(size.area(), 16))
         , _workingData(aligned_malloc<store_t>(size.area(), 16))
+        , _position(aligned_malloc<store_t>(size.area(), 16))
         , _stress(new float[size.area()])
-        //, _position(aligned_malloc<store_t>(size.area(), 16))
         , _mask(new char[size.area()])
         , dim(size) {
         
@@ -131,10 +131,16 @@ protected:
     inline uint32_t formatPixel(store_t &pix) {
         uint32_t r, g, b;
 		glm::vec4 castPix = glm::vec4_cast(pix);
-        r = static_cast<uint32_t>((castPix.x + 1) * 127.5f);
-        g = static_cast<uint32_t>((castPix.y + 1) * 127.5f);
-        b = static_cast<uint32_t>((castPix.z * 255));
-        return 0xFF000000 | r << 16 | g << 8 | b;
+
+        if (castPix.w < 0.5f || castPix.w > 4.5f) {
+            return 0;
+        }
+        else {
+            r = static_cast<uint32_t>((castPix.x + 1) * 127.5f);
+            g = static_cast<uint32_t>((castPix.y + 1) * 127.5f);
+            b = static_cast<uint32_t>((castPix.z * 255));
+            return 0xFF000000 | r << 16 | g << 8 | b;
+        }
     }
 
     // Data members
@@ -142,7 +148,7 @@ protected:
     store_p _workingData;
     mask_p _mask;
     stress_p _stress;
-    //store_p _position;
+    store_p _position;
 
     // Flood fill structure
     struct _QLinearFill {

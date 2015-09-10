@@ -7,7 +7,7 @@ using namespace std;
 void NormDepthImage::calcNormals(float camXZ, float camYZ) {
     Pt2i pt;
 	auto dd = _data.get();
-	auto posd = _workingData.get();
+	auto posd = _position.get();
 	store_t pix;
 
     // First pass calculates the camera-space position of each depth pixel,
