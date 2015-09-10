@@ -612,7 +612,7 @@ void NormDepthImage::masked_stressMap() {
         for (pt.x = 0; pt.x < dim.width; pt.x++) {
             if (getMask(pt) != PICKED) continue;
 
-            // Angle between (newly calculated) normals using offset
+            // Squared angle between (newly calculated) normals using offset
             auto here = pos[ptInd(pt)];
             Pt2i offsPt = pt.offs(0, offsetDist);
             auto data0 = (offsPt.y < dim.height && getMask(offsPt) == PICKED) ? pos[ptInd(offsPt)] : here;
