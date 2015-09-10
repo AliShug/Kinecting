@@ -61,7 +61,7 @@ public:
         auto d = _data.get();
         for (int i = 0; i < dim.area(); i++) {
 			auto writeable = glm::vec4_cast(d[i]);
-            if (data[i] < 500.0f || data[i] > 4500.0f)  writeable.w = -1.0f;
+            if (data[i] < 500.0f || data[i] > 4500.0f)  writeable.w = 0.0f;
             else                                        writeable.w = data[i] / 1000.0f;
 			d[i] = store_t(writeable);
         }
@@ -120,7 +120,7 @@ public:
 	inline char getMask(const Pt2i &pt) { return _mask.get()[ptInd(pt)]; }
 	inline float getDepth(const Pt2i &pt) { return glm::vec4_cast(_data.get()[ptInd(pt)]).w;	}
     inline float getStress(const Pt2i &pt) { return _stress.get()[ptInd(pt)]; }
-    //inline glm::vec3 getPos(const Pt2i &pt) { return glm::vec4_cast(_position.get()[ptInd(pt)]).xyz; }
+    inline glm::vec3 getPos(const Pt2i &pt) { return glm::vec4_cast(_position.get()[ptInd(pt)]).xyz; }
 
     // Publicly accessible members
     Dim dim;

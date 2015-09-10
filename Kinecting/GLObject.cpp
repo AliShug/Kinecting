@@ -351,7 +351,7 @@ void GLObject::applyTransform(const mat4 &mat) {
 		vert.pos = pos4.xyz;
 	}
 
-	bind();
+    _bound = false;
 }
 
 void GLObject::applyTransform(const mat3 &mat) {
@@ -359,5 +359,5 @@ void GLObject::applyTransform(const mat3 &mat) {
 		vert.pos = mat * vert.pos;
 	}
 
-	bind();
+    _bound = false;
 }

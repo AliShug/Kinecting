@@ -522,7 +522,7 @@ void NormDepthImage::threshold_normalFlood(Pt2i seed, float thresh, float dThres
 // ** Stress-map generation
 
 void NormDepthImage::masked_laplaceSmooth(int iterations) {
-    /*Pt2i pt;
+    Pt2i pt;
     auto dd = _data.get();
     auto pos = _position.get();
 
@@ -558,10 +558,11 @@ void NormDepthImage::masked_laplaceSmooth(int iterations) {
                 pos[ptInd(pt)] = store_t(newPoint, newPoint.z);
                 auto data = dd[ptInd(pt)];
                 data.Data.m128_f32[3] = newPoint.z;
-                dd[ptInd(pt)] = data;
+                //dd[ptInd(pt)] = data;
+                pos[ptInd(pt)] = data;
             }
         }
-    }*/
+    }
 }
 
 void NormDepthImage::masked_stressMap() {
