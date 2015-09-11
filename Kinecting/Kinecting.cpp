@@ -109,7 +109,7 @@ int main(int argc, char *args[]) {
     const float projectorFovX = 48.9f;
     const Dim projectorDim = { 845, 480 };
 
-    //try
+    try
     {
         // Kinect and main window
         KinectDevice kinect;
@@ -370,15 +370,15 @@ int main(int argc, char *args[]) {
             projectorWindow.render();
         }
     }
- //   catch (exception e) {
- //       SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.what(), nullptr);
- //   }
-	//catch (char* e) {
-	//	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e, nullptr);
-	//}
-	//catch (string e) {
-	//	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.c_str(), nullptr);
-	//}
+    catch (exception e) {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.what(), nullptr);
+    }
+	catch (char* e) {
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e, nullptr);
+	}
+	catch (string e) {
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Runtime error", e.c_str(), nullptr);
+	}
 
     // Explicit cleanup (mainly for SDL subsystems)
     GLWindow::ReleaseGUI();

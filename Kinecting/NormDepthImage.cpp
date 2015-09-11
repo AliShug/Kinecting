@@ -563,28 +563,64 @@ void NormDepthImage::masked_laplaceSmooth(int iterations) {
         swap(readData, writeData);
         for (pt.y = 0; pt.y < dim.height; pt.y++) {
             for (pt.x = 0; pt.x < dim.width; pt.x++) {
-                auto pdata = readData[ptInd(pt)];
+                store_t pdata = readData[ptInd(pt)];
                 vec3 p = vec4_cast(pdata).xyz;
                 
-                auto here = readData[ptInd(pt)];
+                store_t here = readData[ptInd(pt)];
+                store_t data0, data1, data2, data3;
+
+                // Pick points to use
+                bool lockXY = false;
                 Pt2i offsPt = pt.offs(0, 1);
-                auto data0 = (offsPt.y < dim.height && getMask(offsPt) == PICKED) ? readData[ptInd(offsPt)] : here;
+                if (offsPt.y < dim.height && getMask(offsPt) == PICKED) {
+                    data0 = readData[ptInd(offsPt)];
+                }
+                else {
+                    data0 = here;
+                    lockXY = true;
+                }
+
                 offsPt = pt.offs(0, -1);
-                auto data1 = (offsPt.y >= 0 && getMask(offsPt) == PICKED) ? readData[ptInd(offsPt)] : here;
+                if (offsPt.y >= 0 && getMask(offsPt) == PICKED) {
+                    data1 = readData[ptInd(offsPt)];
+                }
+                else {
+                    data1 = here;
+                    lockXY = true;
+                }
+
                 offsPt = pt.offs(-1, 0);
-                auto data2 = (offsPt.x >= 0 && getMask(offsPt) == PICKED) ? readData[ptInd(offsPt)] : here;
+                if (offsPt.x >= 0 && getMask(offsPt) == PICKED) {
+                    data2 = readData[ptInd(offsPt)];
+                }
+                else {
+                    data2 = here;
+                    lockXY = true;
+                }
+
                 offsPt = pt.offs(1, 0);
-                auto data3 = (offsPt.x < dim.width && getMask(offsPt) == PICKED) ? readData[ptInd(offsPt)] : here;
+                if (offsPt.x < dim.width && getMask(offsPt) == PICKED) {
+                    data3 = readData[ptInd(offsPt)];
+                }
+                else {
+                    data3 = here;
+                    lockXY = true;
+                }
+
 
                 vec3 l, r, u, d, m;
-                m = *reinterpret_cast<vec3*>(&here);
-                u = *reinterpret_cast<vec3*>(&data0);
-                d = *reinterpret_cast<vec3*>(&data1);
-                l = *reinterpret_cast<vec3*>(&data2);
-                r = *reinterpret_cast<vec3*>(&data3);
+                m = vec4_cast(here).xyz;
+                u = vec4_cast(data0).xyz;
+                d = vec4_cast(data1).xyz;
+                l = vec4_cast(data2).xyz;
+                r = vec4_cast(data3).xyz;
 
                 vec3 deltaP = 0.25f * (u + d + l + r) - m;
                 vec3 newPoint = m + 0.5f * deltaP;
+                if (lockXY) {
+                    newPoint.x = m.x;
+                    newPoint.y = m.y;
+                }
 
                 writeData[ptInd(pt)] = store_t(newPoint, newPoint.z);
             }

@@ -184,7 +184,14 @@ void GLObject::genPointCloud(const color_t &col, const PointCloud &pc) {
 
     for (int i = 0; i < pc.cloud.size(); i++) {
         auto pt = pc.cloud[i];
-        _mesh.vertices.push_back({ pt.pos, { 0, 0, 0 }, col * pt.stress, { 0, 0 } });
+
+        // Heatmap components
+        float scalar = pt.stress;
+        color_t blue_col = Colors::blue * (clamp(scalar, 0.0f, 1.0f) - clamp(scalar - 3.0f, 0.0f, 1.0f));
+        color_t green_col = Colors::green * (clamp(scalar - 1.0f, 0.0f, 1.0f) - clamp(scalar - 4.0f, 0.0f, 1.0f));
+        color_t red_col = Colors::red * (clamp(scalar - 2.0f, 0.0f, 1.0f) - clamp(scalar - 5.0f, 0.0f, 1.0f));
+
+        _mesh.vertices.push_back({ pt.pos, { 0, 0, 0 }, blue_col + green_col + red_col, { 0, 0 } });
         _mesh.indices.push_back(i);
     }
 
